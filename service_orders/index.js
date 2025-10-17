@@ -56,15 +56,31 @@ let currentId = 1;
 
 // Routes
 
-app.get('/orders/:orderId', (req, res) => {
+app.get('/v1/orders/:orderId', authenticateJWT, (req, res) => {
     const orderId = parseInt(req.params.orderId);
     const order = fakeOrdersDb[orderId];
 
     if (!order) {
-        return res.status(404).json({error: 'Order not found'});
+        logger.warn({ requestId: req.requestId, orderId }, 'Order not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'Order not found' }
+        });
     }
 
-    res.json(order);
+    if (order.userId !== req.user.id && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order access');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
+    }
+
+    logger.info({ requestId: req.requestId, orderId }, 'Order fetched');
+    res.json({
+        success: true,
+        data: order
+    });
 });
 
 app.get('/orders', (req, res) => {

@@ -236,16 +236,25 @@ app.delete('/v1/orders/:orderId', authenticateJWT, (req, res) => {
     });
 });
 
-app.get('/orders/status', (req, res) => {
-    res.json({status: 'Orders service is running'});
+app.get('/v1/orders/health', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Health check');
+    res.json({
+        success: true,
+        data: { status: 'OK', service: 'Orders Service', timestamp: new Date().toISOString() }
+    });
 });
 
-app.get('/orders/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        service: 'Orders Service',
-        timestamp: new Date().toISOString()
-    });
+app.get('/v1/orders/status', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Status check');
+    res.json({ success: true, data: { status: 'Orders service is running' } });
+});
+
+// Логирование событий (заготовка для брокера)
+eventEmitter.on('orderCreated', (event) => {
+    logger.info({ event }, 'Order created event');
+});
+eventEmitter.on('orderUpdated', (event) => {
+    logger.info({ event }, 'Order updated event');
 });
 // Start server
 app.listen(PORT, () => {

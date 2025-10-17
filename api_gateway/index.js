@@ -24,8 +24,13 @@ const USERS_SERVICE_URL = 'http://service_users:8000';
 const ORDERS_SERVICE_URL = 'http://service_orders:8000';
 
 const authenticateJWT = (req, res, next) => {
+    if (req.path === '/v1/users/register' || req.path === '/v1/users/login') {
+        return next(); // Пропускаем без токена
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logger.warn({ requestId: req.requestId }, 'Missing or invalid Authorization header');
         return res.status(401).json({
             success: false,
             error: { code: 'UNAUTHORIZED', message: 'Authorization header missing or invalid' }
@@ -35,9 +40,10 @@ const authenticateJWT = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded; // Добавляем userId и role в req
+        req.user = decoded;
         next();
     } catch (err) {
+        logger.error({ requestId: req.requestId, error: err.message }, 'Invalid token');
         return res.status(403).json({
             success: false,
             error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' }

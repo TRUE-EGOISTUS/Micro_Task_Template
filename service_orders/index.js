@@ -1,8 +1,15 @@
 const express = require('express');
 const cors = require('cors');
+const Joi = require('joi');
+const jwt = require('jsonwebtoken');
+const pino = require('pino');
+const EventEmitter = require('events');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
+const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
+const eventEmitter = new EventEmitter(); // Для событий
 
 // Middleware
 app.use(cors());

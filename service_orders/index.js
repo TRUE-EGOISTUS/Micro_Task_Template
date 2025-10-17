@@ -102,20 +102,16 @@ app.get('/v1/orders', authenticateJWT, (req, res) => {
         orders = orders.filter(o => o.userId === req.user.id);
     }
 
-    // Сортировка
     orders.sort((a, b) => {
-        if (order === 'asc') {
-            return a[sort] > b[sort] ? 1 : -1;
-        } else {
-            return a[sort] < b[sort] ? 1 : -1;
-        }
+        const valA = a[sort] || '';
+        const valB = b[sort] || '';
+        return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
     });
 
-    // Пагинация
     const start = (page - 1) * limit;
     const paginatedOrders = orders.slice(start, start + limit);
 
-    logger.info({ requestId: req.requestId, userId: req.user.id }, 'Orders list fetched');
+    logger.info({ requestId: req.requestId }, 'Orders list fetched');
     res.json({
         success: true,
         data: {

@@ -186,13 +186,38 @@ app.get('/v1/users', authenticateJWT, (req, res) => {
         });
     }
 
-    const users = Object.values(fakeUsersDb).map(u => ({
+    const page = parseInt(req.query.page) || 1; // Номер страницы, по умолчанию 1
+    const limit = parseInt(req.query.limit) || 10; // Кол-во на странице, по умолчанию 10
+    const role = req.query.role; // Фильтр по роли
+
+    let users = Object.values(fakeUsersDb).map(u => ({
         id: u.id,
         email: u.email,
-        role: u.role
+        role: u.role,
+        name: u.name,
+        roles: u.roles,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt
     }));
+
+    if (role) {
+        users = users.filter(u => u.roles.includes(role)); // Фильтр по роли
+    }
+
+    users.sort((a, b) => a.id.localeCompare(b.id)); // Сортировка по ID
+    const start = (page - 1) * limit;
+    const paginatedUsers = users.slice(start, start + limit);
+
     logger.info({ requestId: req.requestId }, 'Users list fetched');
-    res.json({ success: true, data: users });
+    res.json({
+        success: true,
+        data: {
+            users: paginatedUsers,
+            page,
+            limit,
+            total: users.length
+        }
+    });
 });
 
 app.get('/v1/users/:userId', authenticateJWT, (req, res) => {

@@ -7,11 +7,18 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
+const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+    req.requestId = Date.now().toString();
+    res.setHeader('X-Request-ID', req.requestId);
+    logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
+    next();
+});
 // Имитация базы данных в памяти (LocalStorage)
 let fakeUsersDb = {};
 let currentId = 1;

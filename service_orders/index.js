@@ -79,17 +79,48 @@ app.get('/orders', (req, res) => {
     res.json(orders);
 });
 
-app.post('/orders', (req, res) => {
-    const orderData = req.body;
-    const orderId = currentId++;
+app.post('/v1/orders', authenticateJWT, async (req, res) => {
+    try {
+        const { error, value } = orderSchema.validate(req.body);
+        if (error) {
+            logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+            });
+        }
 
-    const newOrder = {
-        id: orderId,
-        ...orderData
-    };
+        if (value.userId !== req.user.id) {
+            logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order creation');
+            return res.status(403).json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Can only create orders for yourself' }
+            });
+        }
 
-    fakeOrdersDb[orderId] = newOrder;
-    res.status(201).json(newOrder);
+        const orderId = currentId++;
+        const newOrder = {
+            id: orderId,
+            userId: value.userId,
+            description: value.description,
+            status: value.status,
+            createdAt: new Date().toISOString()
+        };
+
+        fakeOrdersDb[orderId] = newOrder;
+        eventEmitter.emit('orderCreated', { orderId, userId: value.userId, description: value.description });
+        logger.info({ requestId: req.requestId, orderId }, 'Order created');
+        res.status(201).json({
+            success: true,
+            data: newOrder
+        });
+    } catch (err) {
+        logger.error({ requestId: req.requestId, error: err.message }, 'Order creation error');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+        });
+    }
 });
 
 app.put('/orders/:orderId', (req, res) => {

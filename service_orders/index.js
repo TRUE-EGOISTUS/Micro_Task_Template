@@ -15,6 +15,12 @@ const eventEmitter = new EventEmitter(); // Для событий
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+    req.requestId = req.headers['x-request-id'] || Date.now().toString();
+    res.setHeader('X-Request-ID', req.requestId);
+    logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
+    next();
+});
 // Имитация базы данных в памяти (LocalStorage)
 let fakeOrdersDb = {};
 let currentId = 1;

@@ -328,32 +328,48 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
 });
 
 // Gateway Aggregation: Get user details with their orders
-app.get('/users/:userId/details', async (req, res) => {
+app.get('/v1/users/:userId/details', authenticateJWT, async (req, res) => {
     try {
-        const userId = req.params.userId;
-
-        // Get user details
-        const userPromise = usersCircuit.fire(`${USERS_SERVICE_URL}/users/${userId}`);
-
-        // Get user's orders (assuming orders have a userId field)
-        const ordersPromise = ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders`)
-            .then(orders => orders.filter(order => order.userId == userId));
-
-        // Wait for both requests to complete
-        const [user, userOrders] = await Promise.all([userPromise, ordersPromise]);
-
-        // If user not found, return 404
-        if (user.error === 'User not found') {
-            return res.status(404).json(user);
+        const userId = parseInt(req.params.userId);
+        if (req.user.id !== userId && req.user.role !== 'admin') {
+            logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized access to user details');
+            return res.status(403).json({
+                success: false,
+                error: { code: 'FORBIDDEN', message: 'Access denied' }
+            });
         }
 
-        // Return aggregated response
+        const userPromise = usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
+        });
+
+        const ordersPromise = ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
+        });
+
+        const [userResponse, ordersResponse] = await Promise.all([userPromise, ordersPromise]);
+
+        if (!userResponse.success) {
+            logger.warn({ requestId: req.requestId, userId }, 'User not found');
+            return res.status(404).json(userResponse);
+        }
+
+        logger.info({ requestId: req.requestId, userId }, 'User details fetched');
         res.json({
-            user,
-            orders: userOrders
+            success: true,
+            data: {
+                user: userResponse.data,
+                orders: ordersResponse.data.orders
+            }
         });
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching user details');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

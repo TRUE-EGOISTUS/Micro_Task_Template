@@ -247,7 +247,7 @@ app.get('/v1/users/:userId', authenticateJWT, (req, res) => {
 });
 
 app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
-    const userId = parseInt(req.params.userId);
+    const userId = req.params.userId;
     if (req.user.id !== userId && req.user.role !== 'admin') {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized update attempt');
         return res.status(403).json({
@@ -258,7 +258,7 @@ app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
 
     const { error, value } = profileSchema.validate(req.body);
     if (error) {
-        logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+        logger.warn({ requestId: req.requestId }, 'Validation error');
         return res.status(400).json({
             success: false,
             error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
@@ -276,11 +276,15 @@ app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
 
     if (value.email) user.email = value.email;
     if (value.password) user.password = await bcrypt.hash(value.password, 10);
+    if (value.name) user.name = value.name; // Новое поле
+    if (value.roles) user.roles = value.roles; // Новое поле
+    user.updatedAt = new Date().toISOString(); // Обновляем дату
+
     fakeUsersDb[userId] = user;
     logger.info({ requestId: req.requestId, userId }, 'User updated');
     res.json({
         success: true,
-        data: { id: user.id, email: user.email, role: user.role }
+        data: { id: user.id, email: user.email, role: user.role, name: user.name, roles: user.roles, createdAt: user.createdAt, updatedAt: user.updatedAt }
     });
 });
 

@@ -177,10 +177,24 @@ app.put('/v1/users/profile', authenticateJWT, async (req, res) => {
         });
     }
 });
-app.get('/users', (req, res) => {
-    const users = Object.values(fakeUsersDb);
-    res.json(users);
+app.get('/v1/users', authenticateJWT, (req, res) => {
+    if (req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized access to users list');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Admin access required' }
+        });
+    }
+
+    const users = Object.values(fakeUsersDb).map(u => ({
+        id: u.id,
+        email: u.email,
+        role: u.role
+    }));
+    logger.info({ requestId: req.requestId }, 'Users list fetched');
+    res.json({ success: true, data: users });
 });
+
 app.get('/users/health', (req, res) => {
     res.json({
         status: 'OK',

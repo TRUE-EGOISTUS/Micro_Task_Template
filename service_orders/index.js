@@ -65,7 +65,7 @@ let currentId = 1;
 // Routes
 
 app.get('/v1/orders/:orderId', authenticateJWT, (req, res) => {
-    const orderId = parseInt(req.params.orderId);
+    const orderId = req.params.orderId;
     const order = fakeOrdersDb[orderId];
 
     if (!order) {

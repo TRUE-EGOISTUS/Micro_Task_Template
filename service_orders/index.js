@@ -128,47 +128,41 @@ app.get('/v1/orders', authenticateJWT, (req, res) => {
 });
 
 app.post('/v1/orders', authenticateJWT, async (req, res) => {
-    try {
-        const { error, value } = orderSchema.validate(req.body);
-        if (error) {
-            logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
-            return res.status(400).json({
-                success: false,
-                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
-            });
-        }
-
-        if (value.userId !== req.user.id) {
-            logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order creation');
-            return res.status(403).json({
-                success: false,
-                error: { code: 'FORBIDDEN', message: 'Can only create orders for yourself' }
-            });
-        }
-
-        const orderId = currentId++;
-        const newOrder = {
-            id: orderId,
-            userId: value.userId,
-            description: value.description,
-            status: value.status,
-            createdAt: new Date().toISOString()
-        };
-
-        fakeOrdersDb[orderId] = newOrder;
-        eventEmitter.emit('orderCreated', { orderId, userId: value.userId, description: value.description });
-        logger.info({ requestId: req.requestId, orderId }, 'Order created');
-        res.status(201).json({
-            success: true,
-            data: newOrder
-        });
-    } catch (err) {
-        logger.error({ requestId: req.requestId, error: err.message }, 'Order creation error');
-        res.status(500).json({
+    const { error, value } = orderSchema.validate(req.body);
+    if (error) {
+        logger.warn({ requestId: req.requestId }, 'Validation error');
+        return res.status(400).json({
             success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+            error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
         });
     }
+
+    if (value.userId !== req.user.id && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order creation');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
+    }
+
+    const orderId = uuid.v4();
+    fakeOrdersDb[orderId] = {
+        id: orderId,
+        userId: value.userId,
+        description: value.description,
+        positions: value.positions,
+        total: value.total,
+        status: value.status,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    eventEmitter.emit('orderCreated', { orderId, userId: value.userId });
+    logger.info({ requestId: req.requestId, orderId }, 'Order created');
+    res.status(201).json({
+        success: true,
+        data: fakeOrdersDb[orderId]
+    });
 });
 
 app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {

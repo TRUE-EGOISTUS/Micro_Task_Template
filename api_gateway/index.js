@@ -3,6 +3,7 @@ const cors = require('cors');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const pino = require('pino');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const CircuitBreaker = require('opossum');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');

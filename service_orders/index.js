@@ -258,5 +258,5 @@ eventEmitter.on('orderUpdated', (event) => {
 });
 // Start server
 app.listen(PORT, () => {
-    console.log(`Orders service running on port ${PORT}`);
+   logger.info(`Orders service running on port ${PORT}`);
 });

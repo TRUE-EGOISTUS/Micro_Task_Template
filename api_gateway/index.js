@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const CircuitBreaker = require('opossum');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
+const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
 
 // Middleware
 app.use(cors());

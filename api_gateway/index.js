@@ -171,14 +171,24 @@ app.get('/v1/users', authenticateJWT, async (req, res) => {
     }
 });
 
-app.delete('/users/:userId', async (req, res) => {
+app.delete('/v1/users/:userId', authenticateJWT, async (req, res) => {
     try {
-        const result = await usersCircuit.fire(`${USERS_SERVICE_URL}/users/${req.params.userId}`, {
-            method: 'DELETE'
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
+            method: 'DELETE',
+            requestId: req.requestId
         });
-        res.json(result);
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User deletion failed');
+            return res.status(404).json(response);
+        }
+        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User deleted');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error deleting user');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

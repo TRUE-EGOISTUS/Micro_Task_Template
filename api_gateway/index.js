@@ -101,12 +101,17 @@ ordersCircuit.fallback(() => ({
 // Routes with Circuit Breaker
 app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {
     try {
-        const user = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`);
-        if (user.error) {
-            return res.status(404).json({ success: false, error: user.error });
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
+            requestId: req.requestId
+        });
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User not found');
+            return res.status(404).json(response);
         }
-        res.json({ success: true, data: user });
+        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User fetched');
+        res.json(response);
     } catch (error) {
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching user');
         res.status(500).json({
             success: false,
             error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }

@@ -83,16 +83,40 @@ app.get('/v1/orders/:orderId', authenticateJWT, (req, res) => {
     });
 });
 
-app.get('/orders', (req, res) => {
-    let orders = Object.values(fakeOrdersDb);
+app.get('/v1/orders', authenticateJWT, (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const sort = req.query.sort || 'createdAt';
+    const order = req.query.order || 'asc';
 
-    // Добавляем фильтрацию по userId если передан параметр
-    if (req.query.userId) {
-        const userId = parseInt(req.query.userId);
-        orders = orders.filter(order => order.userId === userId);
+    let orders = Object.values(fakeOrdersDb);
+    if (req.user.role !== 'admin') {
+        orders = orders.filter(o => o.userId === req.user.id);
     }
 
-    res.json(orders);
+    // Сортировка
+    orders.sort((a, b) => {
+        if (order === 'asc') {
+            return a[sort] > b[sort] ? 1 : -1;
+        } else {
+            return a[sort] < b[sort] ? 1 : -1;
+        }
+    });
+
+    // Пагинация
+    const start = (page - 1) * limit;
+    const paginatedOrders = orders.slice(start, start + limit);
+
+    logger.info({ requestId: req.requestId, userId: req.user.id }, 'Orders list fetched');
+    res.json({
+        success: true,
+        data: {
+            orders: paginatedOrders,
+            page,
+            limit,
+            total: orders.length
+        }
+    });
 });
 
 app.post('/v1/orders', authenticateJWT, async (req, res) => {

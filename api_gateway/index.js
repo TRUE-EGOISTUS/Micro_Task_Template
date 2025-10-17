@@ -264,12 +264,20 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
         });
     }
 });
-app.get('/orders', async (req, res) => {
+app.get('/v1/orders', authenticateJWT, async (req, res) => {
     try {
-        const orders = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders`);
-        res.json(orders);
+        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders?page=${req.query.page || 1}&limit=${req.query.limit || 10}&sort=${req.query.sort || 'createdAt'}&order=${req.query.order || 'asc'}`, {
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
+        });
+        logger.info({ requestId: req.requestId }, 'Orders list fetched');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching orders');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

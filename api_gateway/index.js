@@ -132,6 +132,23 @@ app.post('/v1/users/register', async (req, res) => {
     }
 });
 
+app.post('/v1/users/login', async (req, res) => {
+    try {
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/login`, {
+            method: 'POST',
+            data: req.body,
+            requestId: req.requestId
+        });
+        logger.info({ requestId: req.requestId }, 'User login forwarded');
+        res.json(response);
+    } catch (error) {
+        logger.error({ requestId: req.requestId, error: error.message }, 'Login error');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
+    }
+});
 
 app.get('/users', async (req, res) => {
     try {

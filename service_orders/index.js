@@ -162,7 +162,7 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
 });
 
 app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
-    const orderId = parseInt(req.params.orderId);
+    const orderId = req.params.orderId;
     const order = fakeOrdersDb[orderId];
 
     if (!order) {
@@ -183,7 +183,7 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
 
     const { error, value } = orderSchema.validate(req.body);
     if (error) {
-        logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+        logger.warn({ requestId: req.requestId }, 'Validation error');
         return res.status(400).json({
             success: false,
             error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
@@ -194,7 +194,8 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
         ...order,
         ...value,
         id: orderId,
-        createdAt: order.createdAt
+        createdAt: order.createdAt,
+        updatedAt: new Date().toISOString()
     };
 
     eventEmitter.emit('orderUpdated', { orderId, status: value.status });

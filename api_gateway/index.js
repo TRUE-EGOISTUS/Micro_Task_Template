@@ -225,16 +225,24 @@ app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
         });
     }
 });
-app.get('/orders/:orderId', async (req, res) => {
+app.get('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     try {
-        const order = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/${req.params.orderId}`);
-        if (order.error === 'Order not found') {
-            res.status(404).json(order);
-        } else {
-            res.json(order);
+        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
+        });
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order not found');
+            return res.status(404).json(response);
         }
+        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order fetched');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching order');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

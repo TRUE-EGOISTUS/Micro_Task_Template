@@ -12,7 +12,8 @@
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "opossum": "^7.0.0"
+    "opossum": "^7.0.0",
+    "pino": "^10.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

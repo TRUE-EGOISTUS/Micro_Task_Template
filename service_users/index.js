@@ -58,7 +58,9 @@ const loginSchema = Joi.object({
 
 const profileSchema = Joi.object({
     email: Joi.string().email().optional(),
-    password: Joi.string().min(6).optional()
+    password: Joi.string().min(6).optional(),
+    name: Joi.string().optional(),
+    roles: Joi.array().items(Joi.string().valid('user', 'admin')).optional()
 });
 // Routes
 app.post('/v1/users/register', async (req, res) => {

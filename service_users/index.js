@@ -221,21 +221,42 @@ app.get('/v1/users/:userId', authenticateJWT, (req, res) => {
     });
 });
 
-app.put('/users/:userId', (req, res) => {
+app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
     const userId = parseInt(req.params.userId);
-    const updates = req.body;
-
-    if (!fakeUsersDb[userId]) {
-        return res.status(404).json({error: 'User not found'});
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized update attempt');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
     }
 
-    const updatedUser = {
-        ...fakeUsersDb[userId],
-        ...updates
-    };
+    const { error, value } = profileSchema.validate(req.body);
+    if (error) {
+        logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+        return res.status(400).json({
+            success: false,
+            error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+        });
+    }
 
-    fakeUsersDb[userId] = updatedUser;
-    res.json(updatedUser);
+    const user = fakeUsersDb[userId];
+    if (!user) {
+        logger.warn({ requestId: req.requestId, userId }, 'User not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'User not found' }
+        });
+    }
+
+    if (value.email) user.email = value.email;
+    if (value.password) user.password = await bcrypt.hash(value.password, 10);
+    fakeUsersDb[userId] = user;
+    logger.info({ requestId: req.requestId, userId }, 'User updated');
+    res.json({
+        success: true,
+        data: { id: user.id, email: user.email, role: user.role }
+    });
 });
 
 app.delete('/users/:userId', (req, res) => {

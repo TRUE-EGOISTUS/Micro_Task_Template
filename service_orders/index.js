@@ -251,9 +251,11 @@ app.get('/v1/orders/status', (req, res) => {
 // Логирование событий (заготовка для брокера)
 eventEmitter.on('orderCreated', (event) => {
     logger.info({ event }, 'Order created event');
+    console.log(`Publish to broker: orderCreated - ${JSON.stringify(event)}`); // Заготовка
 });
 eventEmitter.on('orderUpdated', (event) => {
     logger.info({ event }, 'Order updated event');
+    console.log(`Publish to broker: orderUpdated - ${JSON.stringify(event)}`); // Заготовка
 });
 // Start server
 app.listen(PORT, () => {

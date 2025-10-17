@@ -285,16 +285,17 @@ app.delete('/v1/users/:userId', authenticateJWT, (req, res) => {
         data: { message: 'User deleted' }
     });
 });
-app.get('/users/health', (req, res) => {
+app.get('/v1/users/health', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Health check');
     res.json({
-        status: 'OK',
-        service: 'Users Service',
-        timestamp: new Date().toISOString()
+        success: true,
+        data: { status: 'OK', service: 'Users Service', timestamp: new Date().toISOString() }
     });
 });
 
-app.get('/users/status', (req, res) => {
-    res.json({status: 'Users service is running'});
+app.get('/v1/users/status', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Status check');
+    res.json({ success: true, data: { status: 'Users service is running' } });
 });
 // Start server
 app.listen(PORT, '0.0.0.0', () => {

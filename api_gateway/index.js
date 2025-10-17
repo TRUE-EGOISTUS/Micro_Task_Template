@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
 const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 минут
+    windowMs: 1 * 60 * 1000, // 1 минута
     max: 100, // Максимум 100 запросов
     message: {
         success: false,

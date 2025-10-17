@@ -182,18 +182,28 @@ app.delete('/users/:userId', async (req, res) => {
     }
 });
 
-app.put('/users/:userId', async (req, res) => {
+
+app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
     try {
-        const user = await usersCircuit.fire(`${USERS_SERVICE_URL}/users/${req.params.userId}`, {
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
             method: 'PUT',
-            data: req.body
+            data: req.body,
+            requestId: req.requestId
         });
-        res.json(user);
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User update failed');
+            return res.status(404).json(response);
+        }
+        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User updated');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error updating user');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
-
 app.get('/orders/:orderId', async (req, res) => {
     try {
         const order = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/${req.params.orderId}`);

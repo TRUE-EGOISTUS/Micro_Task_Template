@@ -1,24 +1,31 @@
+version: '3.8'
 services:
   api_gateway:
     build: api_gateway
     ports:
-      - "8000:8000"
+      - "${API_GATEWAY_PORT:-8000}:8000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${API_GATEWAY_PORT:-8000}
+      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
     networks:
       - app-network
 
   service_users:
     build: service_users
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${USERS_PORT:-8000}
+      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
     networks:
       - app-network
 
   service_orders:
     build: service_orders
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
+      - PORT=${ORDERS_PORT:-8000}
+      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
     networks:
       - app-network
 

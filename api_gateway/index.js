@@ -12,6 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
 const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
+const USERS_SERVICE_URL = 'http://service_users:8000';
+const ORDERS_SERVICE_URL = 'http://service_orders:8000';
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 минута
     max: 100, // Максимум 100 запросов
@@ -32,9 +34,6 @@ app.use((req, res, next) => {
     logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
     next();
 });
-// Service URLs
-const USERS_SERVICE_URL = 'http://service_users:8000';
-const ORDERS_SERVICE_URL = 'http://service_orders:8000';
 
 const authenticateJWT = (req, res, next) => {
     if (req.path === '/v1/users/register' || req.path === '/v1/users/login') {

@@ -105,11 +105,21 @@ app.post('/v1/users/register', async (req, res) => {
         });
     }
 });
+
 app.post('/v1/users/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const user = Object.values(fakeUsersDb).find(u => u.email === email);
-        if (!user || !(await bcrypt.compare(password, user.password))) {
+        const { error, value } = loginSchema.validate(req.body);
+        if (error) {
+            logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+            });
+        }
+
+        const user = Object.values(fakeUsersDb).find(u => u.email === value.email);
+        if (!user || !(await bcrypt.compare(value.password, user.password))) {
+            logger.warn({ requestId: req.requestId, email: value.email }, 'Invalid credentials');
             return res.status(401).json({
                 success: false,
                 error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' }
@@ -117,17 +127,20 @@ app.post('/v1/users/login', async (req, res) => {
         }
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+        logger.info({ requestId: req.requestId, userId: user.id }, 'User logged in');
         res.json({
             success: true,
             data: { id: user.id, email: user.email, role: user.role, token }
         });
     } catch (err) {
+        logger.error({ requestId: req.requestId, error: err.message }, 'Login error');
         res.status(500).json({
             success: false,
             error: { code: 'INTERNAL_ERROR', message: 'Server error' }
         });
     }
 });
+
 app.get('/users', (req, res) => {
     const users = Object.values(fakeUsersDb);
     res.json(users);

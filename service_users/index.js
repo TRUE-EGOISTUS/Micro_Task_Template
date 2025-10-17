@@ -66,7 +66,29 @@ app.post('/v1/users/register', async (req, res) => {
         });
     }
 });
+app.post('/v1/users/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const user = Object.values(fakeUsersDb).find(u => u.email === email);
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({
+                success: false,
+                error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password' }
+            });
+        }
 
+        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
+        res.json({
+            success: true,
+            data: { id: user.id, email: user.email, role: user.role, token }
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+        });
+    }
+});
 app.get('/users', (req, res) => {
     const users = Object.values(fakeUsersDb);
     res.json(users);

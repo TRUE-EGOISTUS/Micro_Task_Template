@@ -336,7 +336,51 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
         });
     }
 });
+app.use('/v1/users', createProxyMiddleware({
+    target: USERS_SERVICE_URL,
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', req.requestId);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        logger.info({
+            requestId: req.requestId,
+            target: USERS_SERVICE_URL,
+            path: req.path
+        }, 'Gateway: Proxying to users service');
+    },
+    onProxyRes: (proxyRes, req) => {
+        logger.info({
+            requestId: req.requestId,
+            statusCode: proxyRes.statusCode,
+            path: req.path
+        }, 'Gateway: Response from users service');
+    }
+}));
 
+app.use('/v1/orders', createProxyMiddleware({
+    target: ORDERS_SERVICE_URL,
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', req.requestId);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+        logger.info({
+            requestId: req.requestId,
+            target: ORDERS_SERVICE_URL,
+            path: req.path
+        }, 'Gateway: Proxying to orders service');
+    },
+    onProxyRes: (proxyRes, req) => {
+        logger.info({
+            requestId: req.requestId,
+            statusCode: proxyRes.statusCode,
+            path: req.path
+        }, 'Gateway: Response from orders service');
+    }
+}));
 // Gateway Aggregation: Get user details with their orders
 app.get('/v1/users/:userId/details', authenticateJWT, async (req, res) => {
     try {
@@ -402,27 +446,7 @@ app.get('/v1/status', (req, res) => {
     logger.info({ requestId: req.requestId }, 'Status check');
     res.json({ success: true, data: { status: 'API Gateway is running' } });
 });
-app.use('/v1/users', createProxyMiddleware({
-    target: USERS_SERVICE_URL,
-    changeOrigin: true,
-    onProxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Request-ID', req.requestId);
-        if (req.headers.authorization) {
-            proxyReq.setHeader('Authorization', req.headers.authorization);
-        }
-    }
-}));
 
-app.use('/v1/orders', createProxyMiddleware({
-    target: ORDERS_SERVICE_URL,
-    changeOrigin: true,
-    onProxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Request-ID', req.requestId);
-        if (req.headers.authorization) {
-            proxyReq.setHeader('Authorization', req.headers.authorization);
-        }
-    }
-}));
 // Start server
 app.listen(PORT, () => {
     logger.info(`API Gateway running on port ${PORT}`);

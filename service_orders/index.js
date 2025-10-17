@@ -21,6 +21,30 @@ app.use((req, res, next) => {
     logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
     next();
 });
+
+const authenticateJWT = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        logger.warn({ requestId: req.requestId }, 'Missing or invalid Authorization header');
+        return res.status(401).json({
+            success: false,
+            error: { code: 'UNAUTHORIZED', message: 'Authorization header missing or invalid' }
+        });
+    }
+
+    const token = authHeader.split(' ')[1];
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        logger.error({ requestId: req.requestId, error: err.message }, 'Invalid token');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' }
+        });
+    }
+};
 // Имитация базы данных в памяти (LocalStorage)
 let fakeOrdersDb = {};
 let currentId = 1;

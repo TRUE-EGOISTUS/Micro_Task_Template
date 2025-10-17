@@ -22,17 +22,49 @@ const registerSchema = Joi.object({
     role: Joi.string().valid('user', 'admin').default('user')
 });
 // Routes
-app.post('/users', (req, res) => {
-    const userData = req.body;
-    const userId = currentId++;
+app.post('/v1/users/register', async (req, res) => {
+    try {
+        // Валидация
+        const { error, value } = registerSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+            });
+        }
 
-    const newUser = {
-        id: userId,
-        ...userData
-    };
+        // Проверка уникальности email
+        if (Object.values(fakeUsersDb).some(user => user.email === value.email)) {
+            return res.status(400).json({
+                success: false,
+                error: { code: 'EMAIL_EXISTS', message: 'Email already exists' }
+            });
+        }
 
-    fakeUsersDb[userId] = newUser;
-    res.status(201).json(newUser);
+        // Хеширование пароля
+        const hashedPassword = await bcrypt.hash(value.password, 10);
+        const userId = currentId++;
+        const newUser = {
+            id: userId,
+            email: value.email,
+            password: hashedPassword,
+            role: value.role
+        };
+
+        fakeUsersDb[userId] = newUser;
+
+        // Выдача JWT
+        const token = jwt.sign({ id: userId, role: value.role }, JWT_SECRET, { expiresIn: '1h' });
+        res.status(201).json({
+            success: true,
+            data: { id: userId, email: value.email, role: value.role, token }
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+        });
+    }
 });
 
 app.get('/users', (req, res) => {

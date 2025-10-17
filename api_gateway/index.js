@@ -12,8 +12,8 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
 const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
-const USERS_SERVICE_URL = 'http://service_users:8000';
-const ORDERS_SERVICE_URL = 'http://service_orders:8000';
+const USERS_SERVICE_URL = 'http://service_users:8002';
+const ORDERS_SERVICE_URL = 'http://service_orders:8004';
 const limiter = rateLimit({
     windowMs: 1 * 60 * 1000, // 1 минута
     max: 100, // Максимум 100 запросов

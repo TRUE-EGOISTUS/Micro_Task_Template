@@ -4,6 +4,7 @@ const Joi = require('joi');
 const jwt = require('jsonwebtoken');
 const pino = require('pino');
 const EventEmitter = require('events');
+const uuid = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -46,8 +47,15 @@ const authenticateJWT = (req, res, next) => {
     }
 };
 const orderSchema = Joi.object({
-    userId: Joi.number().integer().required(),
+    userId: Joi.string().uuid().required(), // UUID для userId
     description: Joi.string().min(1).required(),
+    positions: Joi.array().items(
+        Joi.object({
+            product: Joi.string().min(1).required(),
+            quantity: Joi.number().integer().min(1).required()
+        })
+    ).required(), // Состав заказа
+    total: Joi.number().min(0).required(), // Итоговая сумма
     status: Joi.string().valid('created', 'in_progress', 'completed', 'cancelled').default('created')
 });
 // Имитация базы данных в памяти (LocalStorage)

@@ -163,20 +163,48 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
     }
 });
 
-app.put('/orders/:orderId', (req, res) => {
+app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     const orderId = parseInt(req.params.orderId);
-    const orderData = req.body;
+    const order = fakeOrdersDb[orderId];
 
-    if (!fakeOrdersDb[orderId]) {
-        return res.status(404).json({error: 'Order not found'});
+    if (!order) {
+        logger.warn({ requestId: req.requestId, orderId }, 'Order not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'Order not found' }
+        });
+    }
+
+    if (order.userId !== req.user.id && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order update');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
+    }
+
+    const { error, value } = orderSchema.validate(req.body);
+    if (error) {
+        logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+        return res.status(400).json({
+            success: false,
+            error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+        });
     }
 
     fakeOrdersDb[orderId] = {
+        ...order,
+        ...value,
         id: orderId,
-        ...orderData
+        createdAt: order.createdAt
     };
 
-    res.json(fakeOrdersDb[orderId]);
+    eventEmitter.emit('orderUpdated', { orderId, status: value.status });
+    logger.info({ requestId: req.requestId, orderId }, 'Order updated');
+    res.json({
+        success: true,
+        data: fakeOrdersDb[orderId]
+    });
 });
 
 app.delete('/orders/:orderId', (req, res) => {

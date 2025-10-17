@@ -14,7 +14,8 @@
     "express-rate-limit": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "opossum": "^7.0.0",
-    "pino": "^10.0.0"
+    "pino": "^10.0.0",
+    "uuid": "^3.4.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

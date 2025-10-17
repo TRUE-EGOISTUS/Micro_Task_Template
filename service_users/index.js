@@ -13,10 +13,6 @@ let fakeUsersDb = {};
 let currentId = 1;
 
 // Routes
-app.get('/users', (req, res) => {
-    const users = Object.values(fakeUsersDb);
-    res.json(users);
-});
 
 app.post('/users', (req, res) => {
     const userData = req.body;
@@ -31,6 +27,10 @@ app.post('/users', (req, res) => {
     res.status(201).json(newUser);
 });
 
+app.get('/users', (req, res) => {
+    const users = Object.values(fakeUsersDb);
+    res.json(users);
+});
 app.get('/users/health', (req, res) => {
     res.json({
         status: 'OK',

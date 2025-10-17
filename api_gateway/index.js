@@ -114,17 +114,24 @@ app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {
     }
 });
 
-app.post('/users', async (req, res) => {
+app.post('/v1/users/register', async (req, res) => {
     try {
-        const user = await usersCircuit.fire(`${USERS_SERVICE_URL}/users`, {
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/register`, {
             method: 'POST',
-            data: req.body
+            data: req.body,
+            requestId: req.requestId
         });
-        res.status(201).json(user);
+        logger.info({ requestId: req.requestId }, 'User registration forwarded');
+        res.status(201).json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Registration error');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
+
 
 app.get('/users', async (req, res) => {
     try {

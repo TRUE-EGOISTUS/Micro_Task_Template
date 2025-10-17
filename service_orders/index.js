@@ -45,6 +45,11 @@ const authenticateJWT = (req, res, next) => {
         });
     }
 };
+const orderSchema = Joi.object({
+    userId: Joi.number().integer().required(),
+    description: Joi.string().min(1).required(),
+    status: Joi.string().valid('created', 'in_progress', 'completed', 'cancelled').default('created')
+});
 // Имитация базы данных в памяти (LocalStorage)
 let fakeOrdersDb = {};
 let currentId = 1;

@@ -15,7 +15,7 @@ services:
     build: service_users
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - PORT=${USERS_PORT:-8000}
+      - PORT="${USERS_PORT:-8002}:8002"
       - JWT_SECRET=${JWT_SECRET:-my-secret-key}
     networks:
       - app-network
@@ -24,7 +24,7 @@ services:
     build: service_orders
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - PORT=${ORDERS_PORT:-8000}
+      - PORT="${ORDERS_PORT:-8004}:8004"
       - JWT_SECRET=${JWT_SECRET:-my-secret-key}
     networks:
       - app-network

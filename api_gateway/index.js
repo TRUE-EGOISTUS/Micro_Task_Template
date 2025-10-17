@@ -89,8 +89,14 @@ const ordersCircuit = new CircuitBreaker(async (url, options = {}) => {
 }, circuitOptions);
 
 // Fallback functions
-usersCircuit.fallback(() => ({error: 'Users service temporarily unavailable'}));
-ordersCircuit.fallback(() => ({error: 'Orders service temporarily unavailable'}));
+usersCircuit.fallback(() => ({
+    success: false,
+    error: { code: 'SERVICE_UNAVAILABLE', message: 'Users service temporarily unavailable' }
+}));
+ordersCircuit.fallback(() => ({
+    success: false,
+    error: { code: 'SERVICE_UNAVAILABLE', message: 'Orders service temporarily unavailable' }
+}));
 
 // Routes with Circuit Breaker
 app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {

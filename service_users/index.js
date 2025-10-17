@@ -3,6 +3,7 @@ const cors = require('cors');
 const Joi = require('joi');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const pino = require('pino');
 
 const app = express();
 const PORT = process.env.PORT || 8000;

@@ -27,7 +27,7 @@ app.use(express.json());
 app.use(limiter);
 
 app.use((req, res, next) => {
-    req.requestId = Date.now().toString();
+    req.requestId = req.headers['x-request-id'] || uuidv4();
     res.setHeader('X-Request-ID', req.requestId);
     logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
     next();

@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const pino = require('pino');
 const CircuitBreaker = require('opossum');
 const rateLimit = require('express-rate-limit');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -392,7 +393,27 @@ app.get('/v1/status', (req, res) => {
     logger.info({ requestId: req.requestId }, 'Status check');
     res.json({ success: true, data: { status: 'API Gateway is running' } });
 });
+app.use('/v1/users', createProxyMiddleware({
+    target: USERS_SERVICE_URL,
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', req.requestId);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+    }
+}));
 
+app.use('/v1/orders', createProxyMiddleware({
+    target: ORDERS_SERVICE_URL,
+    changeOrigin: true,
+    onProxyReq: (proxyReq, req) => {
+        proxyReq.setHeader('X-Request-ID', req.requestId);
+        if (req.headers.authorization) {
+            proxyReq.setHeader('Authorization', req.headers.authorization);
+        }
+    }
+}));
 // Start server
 app.listen(PORT, () => {
     logger.info(`API Gateway running on port ${PORT}`);

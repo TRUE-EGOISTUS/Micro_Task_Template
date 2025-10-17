@@ -195,18 +195,6 @@ app.get('/v1/users', authenticateJWT, (req, res) => {
     res.json({ success: true, data: users });
 });
 
-app.get('/users/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        service: 'Users Service',
-        timestamp: new Date().toISOString()
-    });
-});
-
-app.get('/users/status', (req, res) => {
-    res.json({status: 'Users service is running'});
-});
-
 app.get('/users/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);
     const user = fakeUsersDb[userId];
@@ -247,7 +235,17 @@ app.delete('/users/:userId', (req, res) => {
 
     res.json({message: 'User deleted', deletedUser});
 });
+app.get('/users/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        service: 'Users Service',
+        timestamp: new Date().toISOString()
+    });
+});
 
+app.get('/users/status', (req, res) => {
+    res.json({status: 'Users service is running'});
+});
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Users service running on port ${PORT}`);

@@ -320,24 +320,23 @@ app.get('/users/:userId/details', async (req, res) => {
 });
 
 // Health check endpoint that shows circuit breaker status
-app.get('/health', (req, res) => {
+app.get('/v1/health', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Health check');
     res.json({
-        status: 'API Gateway is running',
-        circuits: {
-            users: {
-                status: usersCircuit.status,
-                stats: usersCircuit.stats
-            },
-            orders: {
-                status: ordersCircuit.status,
-                stats: ordersCircuit.stats
+        success: true,
+        data: {
+            status: 'API Gateway is running',
+            circuits: {
+                users: { status: usersCircuit.status, stats: usersCircuit.stats },
+                orders: { status: ordersCircuit.status, stats: ordersCircuit.stats }
             }
         }
     });
 });
 
-app.get('/status', (req, res) => {
-    res.json({status: 'API Gateway is running'});
+app.get('/v1/status', (req, res) => {
+    logger.info({ requestId: req.requestId }, 'Status check');
+    res.json({ success: true, data: { status: 'API Gateway is running' } });
 });
 
 // Start server

@@ -55,17 +55,6 @@ let fakeOrdersDb = {};
 let currentId = 1;
 
 // Routes
-app.get('/orders/status', (req, res) => {
-    res.json({status: 'Orders service is running'});
-});
-
-app.get('/orders/health', (req, res) => {
-    res.json({
-        status: 'OK',
-        service: 'Orders Service',
-        timestamp: new Date().toISOString()
-    });
-});
 
 app.get('/orders/:orderId', (req, res) => {
     const orderId = parseInt(req.params.orderId);
@@ -132,6 +121,17 @@ app.delete('/orders/:orderId', (req, res) => {
     res.json({message: 'Order deleted', deletedOrder});
 });
 
+app.get('/orders/status', (req, res) => {
+    res.json({status: 'Orders service is running'});
+});
+
+app.get('/orders/health', (req, res) => {
+    res.json({
+        status: 'OK',
+        service: 'Orders Service',
+        timestamp: new Date().toISOString()
+    });
+});
 // Start server
 app.listen(PORT, () => {
     console.log(`Orders service running on port ${PORT}`);

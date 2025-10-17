@@ -207,17 +207,33 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     });
 });
 
-app.delete('/orders/:orderId', (req, res) => {
+app.delete('/v1/orders/:orderId', authenticateJWT, (req, res) => {
     const orderId = parseInt(req.params.orderId);
+    const order = fakeOrdersDb[orderId];
 
-    if (!fakeOrdersDb[orderId]) {
-        return res.status(404).json({error: 'Order not found'});
+    if (!order) {
+        logger.warn({ requestId: req.requestId, orderId }, 'Order not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'Order not found' }
+        });
     }
 
-    const deletedOrder = fakeOrdersDb[orderId];
-    delete fakeOrdersDb[orderId];
+    if (order.userId !== req.user.id && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order deletion');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
+    }
 
-    res.json({message: 'Order deleted', deletedOrder});
+    delete fakeOrdersDb[orderId];
+    eventEmitter.emit('orderUpdated', { orderId, status: 'cancelled' });
+    logger.info({ requestId: req.requestId, orderId }, 'Order deleted');
+    res.json({
+        success: true,
+        data: { message: 'Order deleted' }
+    });
 });
 
 app.get('/orders/status', (req, res) => {

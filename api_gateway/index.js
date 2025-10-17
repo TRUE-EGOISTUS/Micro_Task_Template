@@ -155,12 +155,19 @@ app.post('/v1/users/login', async (req, res) => {
     }
 });
 
-app.get('/users', async (req, res) => {
+app.get('/v1/users', authenticateJWT, async (req, res) => {
     try {
-        const users = await usersCircuit.fire(`${USERS_SERVICE_URL}/users`);
-        res.json(users);
+        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users`, {
+            requestId: req.requestId
+        });
+        logger.info({ requestId: req.requestId }, 'Users list fetched');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching users');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

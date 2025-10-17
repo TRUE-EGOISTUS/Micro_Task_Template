@@ -292,15 +292,26 @@ app.delete('/orders/:orderId', async (req, res) => {
     }
 });
 
-app.put('/orders/:orderId', async (req, res) => {
+app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     try {
-        const order = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/${req.params.orderId}`, {
+        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
             method: 'PUT',
-            data: req.body
+            data: req.body,
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
         });
-        res.json(order);
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order update failed');
+            return res.status(404).json(response);
+        }
+        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order updated');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error updating order');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

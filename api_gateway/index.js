@@ -341,14 +341,11 @@ app.get('/v1/status', (req, res) => {
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`API Gateway running on port ${PORT}`);
-
-    // Log circuit breaker events for monitoring
-    usersCircuit.on('open', () => console.log('Users circuit breaker opened'));
-    usersCircuit.on('close', () => console.log('Users circuit breaker closed'));
-    usersCircuit.on('halfOpen', () => console.log('Users circuit breaker half-open'));
-
-    ordersCircuit.on('open', () => console.log('Orders circuit breaker opened'));
-    ordersCircuit.on('close', () => console.log('Orders circuit breaker closed'));
-    ordersCircuit.on('halfOpen', () => console.log('Orders circuit breaker half-open'));
+    logger.info(`API Gateway running on port ${PORT}`);
+    usersCircuit.on('open', () => logger.info('Users circuit breaker opened'));
+    usersCircuit.on('close', () => logger.info('Users circuit breaker closed'));
+    usersCircuit.on('halfOpen', () => logger.info('Users circuit breaker half-open'));
+    ordersCircuit.on('open', () => logger.info('Orders circuit breaker opened'));
+    ordersCircuit.on('close', () => logger.info('Orders circuit breaker closed'));
+    ordersCircuit.on('halfOpen', () => logger.info('Orders circuit breaker half-open'));
 });

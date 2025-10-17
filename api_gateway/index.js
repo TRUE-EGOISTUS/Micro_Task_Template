@@ -31,7 +31,12 @@ app.use(limiter);
 app.use((req, res, next) => {
     req.requestId = req.headers['x-request-id'] || uuidv4();
     res.setHeader('X-Request-ID', req.requestId);
-    logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
+    logger.info({
+        requestId: req.requestId,
+        method: req.method,
+        url: req.url,
+        path: req.path
+    }, 'Gateway: Request received');
     next();
 });
 

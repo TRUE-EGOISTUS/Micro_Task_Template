@@ -2,16 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const pino = require('pino');
 const CircuitBreaker = require('opossum');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
-
+const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
 // Middleware
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+    req.requestId = Date.now().toString();
+    res.setHeader('X-Request-ID', req.requestId);
+    logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
+    next();
+});
 // Service URLs
 const USERS_SERVICE_URL = 'http://service_users:8000';
 const ORDERS_SERVICE_URL = 'http://service_orders:8000';

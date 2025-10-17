@@ -327,24 +327,6 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     }
 });
 
-app.get('/orders/status', async (req, res) => {
-    try {
-        const status = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/status`);
-        res.json(status);
-    } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
-    }
-});
-
-app.get('/orders/health', async (req, res) => {
-    try {
-        const health = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/health`);
-        res.json(health);
-    } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
-    }
-});
-
 // Gateway Aggregation: Get user details with their orders
 app.get('/users/:userId/details', async (req, res) => {
     try {

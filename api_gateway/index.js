@@ -4,14 +4,25 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const pino = require('pino');
 const CircuitBreaker = require('opossum');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
 const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 минут
+    max: 100, // Максимум 100 запросов
+    message: {
+        success: false,
+        error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests' }
+    }
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(limiter);
 
 app.use((req, res, next) => {
     req.requestId = Date.now().toString();

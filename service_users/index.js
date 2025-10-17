@@ -259,17 +259,31 @@ app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
     });
 });
 
-app.delete('/users/:userId', (req, res) => {
+app.delete('/v1/users/:userId', authenticateJWT, (req, res) => {
     const userId = parseInt(req.params.userId);
-
-    if (!fakeUsersDb[userId]) {
-        return res.status(404).json({error: 'User not found'});
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized delete attempt');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
     }
 
-    const deletedUser = fakeUsersDb[userId];
-    delete fakeUsersDb[userId];
+    const user = fakeUsersDb[userId];
+    if (!user) {
+        logger.warn({ requestId: req.requestId, userId }, 'User not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'User not found' }
+        });
+    }
 
-    res.json({message: 'User deleted', deletedUser});
+    delete fakeUsersDb[userId];
+    logger.info({ requestId: req.requestId, userId }, 'User deleted');
+    res.json({
+        success: true,
+        data: { message: 'User deleted' }
+    });
 });
 app.get('/users/health', (req, res) => {
     res.json({

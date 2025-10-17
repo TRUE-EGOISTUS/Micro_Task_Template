@@ -281,14 +281,26 @@ app.get('/v1/orders', authenticateJWT, async (req, res) => {
     }
 });
 
-app.delete('/orders/:orderId', async (req, res) => {
+
+app.delete('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     try {
-        const result = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders/${req.params.orderId}`, {
-            method: 'DELETE'
+        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
+            method: 'DELETE',
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
         });
-        res.json(result);
+        if (!response.success) {
+            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order deletion failed');
+            return res.status(404).json(response);
+        }
+        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order deleted');
+        res.json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error deleting order');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

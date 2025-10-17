@@ -207,7 +207,7 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
 });
 
 app.delete('/v1/orders/:orderId', authenticateJWT, (req, res) => {
-    const orderId = parseInt(req.params.orderId);
+    const orderId = req.params.orderId;
     const order = fakeOrdersDb[orderId];
 
     if (!order) {

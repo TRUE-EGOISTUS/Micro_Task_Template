@@ -80,16 +80,18 @@ usersCircuit.fallback(() => ({error: 'Users service temporarily unavailable'}));
 ordersCircuit.fallback(() => ({error: 'Orders service temporarily unavailable'}));
 
 // Routes with Circuit Breaker
-app.get('/users/:userId', async (req, res) => {
+app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {
     try {
-        const user = await usersCircuit.fire(`${USERS_SERVICE_URL}/users/${req.params.userId}`);
-        if (user.error === 'User not found') {
-            res.status(404).json(user);
-        } else {
-            res.json(user);
+        const user = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`);
+        if (user.error) {
+            return res.status(404).json({ success: false, error: user.error });
         }
+        res.json({ success: true, data: user });
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
 

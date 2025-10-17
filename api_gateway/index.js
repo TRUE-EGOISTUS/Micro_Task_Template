@@ -42,12 +42,13 @@ app.use((req, res, next) => {
 
 const authenticateJWT = (req, res, next) => {
     if (req.path === '/v1/users/register' || req.path === '/v1/users/login') {
-        return next(); // Пропускаем без токена
+        logger.info({ requestId: req.requestId, path: req.path }, 'Gateway: Skipping JWT for open endpoint');
+        return next();
     }
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        logger.warn({ requestId: req.requestId }, 'Missing or invalid Authorization header');
+        logger.warn({ requestId: req.requestId, path: req.path }, 'Gateway: Missing or invalid Authorization header');
         return res.status(401).json({
             success: false,
             error: { code: 'UNAUTHORIZED', message: 'Authorization header missing or invalid' }
@@ -58,15 +59,18 @@ const authenticateJWT = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
+        logger.info({ requestId: req.requestId, userId: decoded.id, path: req.path }, 'Gateway: JWT verified');
         next();
     } catch (err) {
-        logger.error({ requestId: req.requestId, error: err.message }, 'Invalid token');
+        logger.error({ requestId: req.requestId, error: err.message, path: req.path }, 'Gateway: Invalid token');
         return res.status(403).json({
             success: false,
             error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' }
         });
     }
 };
+
+app.use(authenticateJWT);
 // Circuit Breaker configuration
 const circuitOptions = {
     timeout: 3000, // Timeout for requests (3 seconds)

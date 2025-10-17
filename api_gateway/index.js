@@ -238,18 +238,24 @@ app.get('/orders/:orderId', async (req, res) => {
     }
 });
 
-app.post('/orders', async (req, res) => {
+app.post('/v1/orders', authenticateJWT, async (req, res) => {
     try {
-        const order = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders`, {
+        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders`, {
             method: 'POST',
-            data: req.body
+            data: req.body,
+            requestId: req.requestId,
+            headers: { Authorization: req.headers.authorization }
         });
-        res.status(201).json(order);
+        logger.info({ requestId: req.requestId }, 'Order creation forwarded');
+        res.status(201).json(response);
     } catch (error) {
-        res.status(500).json({error: 'Internal server error'});
+        logger.error({ requestId: req.requestId, error: error.message }, 'Order creation error');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
+        });
     }
 });
-
 app.get('/orders', async (req, res) => {
     try {
         const orders = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/orders`);

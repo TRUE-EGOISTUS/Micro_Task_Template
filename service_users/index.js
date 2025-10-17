@@ -140,7 +140,43 @@ app.post('/v1/users/login', async (req, res) => {
         });
     }
 });
+app.get('/v1/users/profile', authenticateJWT, (req, res) => {
+    const user = fakeUsersDb[req.user.id];
+    logger.info({ requestId: req.requestId, userId: req.user.id }, 'Profile fetched');
+    res.json({
+        success: true,
+        data: { id: user.id, email: user.email, role: user.role }
+    });
+});
 
+app.put('/v1/users/profile', authenticateJWT, async (req, res) => {
+    try {
+        const { error, value } = profileSchema.validate(req.body);
+        if (error) {
+            logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
+            return res.status(400).json({
+                success: false,
+                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+            });
+        }
+
+        const user = fakeUsersDb[req.user.id];
+        if (value.email) user.email = value.email;
+        if (value.password) user.password = await bcrypt.hash(value.password, 10);
+        fakeUsersDb[req.user.id] = user;
+        logger.info({ requestId: req.requestId, userId: req.user.id }, 'Profile updated');
+        res.json({
+            success: true,
+            data: { id: user.id, email: user.email, role: user.role }
+        });
+    } catch (err) {
+        logger.error({ requestId: req.requestId, error: err.message }, 'Profile update error');
+        res.status(500).json({
+            success: false,
+            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+        });
+    }
+});
 app.get('/users', (req, res) => {
     const users = Object.values(fakeUsersDb);
     res.json(users);

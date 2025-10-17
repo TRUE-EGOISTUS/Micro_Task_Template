@@ -195,15 +195,30 @@ app.get('/v1/users', authenticateJWT, (req, res) => {
     res.json({ success: true, data: users });
 });
 
-app.get('/users/:userId', (req, res) => {
+app.get('/v1/users/:userId', authenticateJWT, (req, res) => {
     const userId = parseInt(req.params.userId);
-    const user = fakeUsersDb[userId];
-
-    if (!user) {
-        return res.status(404).json({error: 'User not found'});
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized access to user');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
     }
 
-    res.json(user);
+    const user = fakeUsersDb[userId];
+    if (!user) {
+        logger.warn({ requestId: req.requestId, userId }, 'User not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'User not found' }
+        });
+    }
+
+    logger.info({ requestId: req.requestId, userId }, 'User fetched');
+    res.json({
+        success: true,
+        data: { id: user.id, email: user.email, role: user.role }
+    });
 });
 
 app.put('/users/:userId', (req, res) => {

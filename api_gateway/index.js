@@ -58,7 +58,7 @@ const authenticateJWT = (req, res, next) => {
     const token = authHeader.split(' ')[1];
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;
+        req.user = decoded; // decoded содержит id, roles (array)
         logger.info({ requestId: req.requestId, userId: decoded.id, path: req.path }, 'Gateway: JWT verified');
         next();
     } catch (err) {
@@ -70,15 +70,13 @@ const authenticateJWT = (req, res, next) => {
     }
 };
 
-app.use(authenticateJWT);
 // Circuit Breaker configuration
 const circuitOptions = {
     timeout: 3000, // Timeout for requests (3 seconds)
     errorThresholdPercentage: 50, // Open circuit after 50% of requests fail
-    resetTimeout: 3000, // Wait 30 seconds before trying to close the circuit
+    resetTimeout: 3000, // Wait 3 seconds before trying to close the circuit
 };
 
-// Create circuit breakers for each service
 const usersCircuit = new CircuitBreaker(async (url, options = {}) => {
     try {
         const response = await axios({
@@ -123,16 +121,11 @@ ordersCircuit.fallback(() => ({
 app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {
     try {
         const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
-            requestId: req.requestId
+            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
         });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User not found');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User fetched');
-        res.json(response);
+        res.status(response.success ? 200 : response.error.status || 500).json(response);
     } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching user');
+        logger.error({ requestId: req.requestId, error: error.message }, 'Gateway: Error fetching user');
         res.status(500).json({
             success: false,
             error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
@@ -140,202 +133,6 @@ app.get('/v1/users/:userId', authenticateJWT, async (req, res) => {
     }
 });
 
-app.post('/v1/users/register', async (req, res) => {
-    try {
-        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/register`, {
-            method: 'POST',
-            data: req.body,
-            requestId: req.requestId
-        });
-        logger.info({ requestId: req.requestId }, 'User registration forwarded');
-        res.status(201).json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Registration error');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-app.post('/v1/users/login', async (req, res) => {
-    try {
-        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/login`, {
-            method: 'POST',
-            data: req.body,
-            requestId: req.requestId
-        });
-        logger.info({ requestId: req.requestId }, 'User login forwarded');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Login error');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-app.get('/v1/users', authenticateJWT, async (req, res) => {
-    try {
-        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users`, {
-            requestId: req.requestId
-        });
-        logger.info({ requestId: req.requestId }, 'Users list fetched');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching users');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-app.delete('/v1/users/:userId', authenticateJWT, async (req, res) => {
-    try {
-        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
-            method: 'DELETE',
-            requestId: req.requestId
-        });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User deletion failed');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User deleted');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error deleting user');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-
-app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
-    try {
-        const response = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${req.params.userId}`, {
-            method: 'PUT',
-            data: req.body,
-            requestId: req.requestId
-        });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, userId: req.params.userId }, 'User update failed');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, userId: req.params.userId }, 'User updated');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error updating user');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-app.get('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
-    try {
-        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
-            requestId: req.requestId,
-            headers: { Authorization: req.headers.authorization }
-        });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order not found');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order fetched');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching order');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-app.post('/v1/orders', authenticateJWT, async (req, res) => {
-    try {
-        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders`, {
-            method: 'POST',
-            data: req.body,
-            requestId: req.requestId,
-            headers: { Authorization: req.headers.authorization }
-        });
-        logger.info({ requestId: req.requestId }, 'Order creation forwarded');
-        res.status(201).json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Order creation error');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-app.get('/v1/orders', authenticateJWT, async (req, res) => {
-    try {
-        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders?page=${req.query.page || 1}&limit=${req.query.limit || 10}&sort=${req.query.sort || 'createdAt'}&order=${req.query.order || 'asc'}`, {
-            requestId: req.requestId,
-            headers: { Authorization: req.headers.authorization }
-        });
-        logger.info({ requestId: req.requestId }, 'Orders list fetched');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error fetching orders');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-
-app.delete('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
-    try {
-        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
-            method: 'DELETE',
-            requestId: req.requestId,
-            headers: { Authorization: req.headers.authorization }
-        });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order deletion failed');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order deleted');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error deleting order');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
-
-app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
-    try {
-        const response = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders/${req.params.orderId}`, {
-            method: 'PUT',
-            data: req.body,
-            requestId: req.requestId,
-            headers: { Authorization: req.headers.authorization }
-        });
-        if (!response.success) {
-            logger.warn({ requestId: req.requestId, orderId: req.params.orderId }, 'Order update failed');
-            return res.status(404).json(response);
-        }
-        logger.info({ requestId: req.requestId, orderId: req.params.orderId }, 'Order updated');
-        res.json(response);
-    } catch (error) {
-        logger.error({ requestId: req.requestId, error: error.message }, 'Error updating order');
-        res.status(500).json({
-            success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Internal server error' }
-        });
-    }
-});
 app.use('/v1/users', createProxyMiddleware({
     target: USERS_SERVICE_URL,
     changeOrigin: true,
@@ -381,12 +178,13 @@ app.use('/v1/orders', createProxyMiddleware({
         }, 'Gateway: Response from orders service');
     }
 }));
+
 // Gateway Aggregation: Get user details with their orders
-app.get('/v1/users/:userId/details', async (req, res) => {
+app.get('/v1/users/:userId/details', authenticateJWT, async (req, res) => {
     const userId = req.params.userId;
     logger.info({ requestId: req.requestId, userId }, 'Gateway: Fetching user details');
 
-    if (req.user.id !== userId && req.user.role !== 'admin') {
+    if (req.user.id !== userId && !req.user.roles.includes('admin')) {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Gateway: Unauthorized user details access');
         return res.status(403).json({
             success: false,
@@ -395,20 +193,32 @@ app.get('/v1/users/:userId/details', async (req, res) => {
     }
 
     try {
-        const userResponse = await axios.get(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
+        // Запрос к users-сервису через circuit breaker
+        const userResponse = await usersCircuit.fire(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
             headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
         });
 
-        const ordersResponse = await axios.get(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
+        if (!userResponse.success) {
+            logger.warn({ requestId: req.requestId, userId }, 'Gateway: User not found or service unavailable');
+            return res.status(userResponse.error.status || 500).json(userResponse);
+        }
+
+        // Запрос к orders-сервису через circuit breaker
+        const ordersResponse = await ordersCircuit.fire(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
             headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
         });
+
+        if (!ordersResponse.success) {
+            logger.warn({ requestId: req.requestId, userId }, 'Gateway: Orders fetch failed');
+            return res.status(ordersResponse.error.status || 500).json(ordersResponse);
+        }
 
         logger.info({ requestId: req.requestId, userId }, 'Gateway: User and orders fetched successfully');
         res.json({
             success: true,
             data: {
-                user: userResponse.data.data,
-                orders: ordersResponse.data.data.orders
+                user: userResponse.data,
+                orders: ordersResponse.data.orders
             }
         });
     } catch (error) {
@@ -417,17 +227,17 @@ app.get('/v1/users/:userId/details', async (req, res) => {
             userId,
             error: error.message
         }, 'Gateway: Error fetching user details');
-        res.status(error.response?.status || 500).json({
+        res.status(500).json({
             success: false,
             error: {
-                code: error.response?.data?.error?.code || 'INTERNAL_ERROR',
-                message: error.response?.data?.error?.message || 'Internal server error'
+                code: 'INTERNAL_ERROR',
+                message: 'Internal server error'
             }
         });
     }
 });
 
-// Health check endpoint that shows circuit breaker status
+// Health check endpoint
 app.get('/v1/health', (req, res) => {
     logger.info({ requestId: req.requestId }, 'Health check');
     res.json({

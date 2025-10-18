@@ -367,8 +367,8 @@ app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
 });
 
 app.delete('/v1/users/:userId', authenticateJWT, (req, res) => {
-    const userId = parseInt(req.params.userId);
-    if (req.user.id !== userId && req.user.role !== 'admin') {
+    const userId = req.params.userId;
+    if (req.user.id !== userId && !req.user.roles.includes('admin')) {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized delete attempt');
         return res.status(403).json({
             success: false,

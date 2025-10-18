@@ -104,7 +104,16 @@ app.post('/v1/users/register', async (req, res) => {
         const token = jwt.sign({ id: userId, role: value.role }, JWT_SECRET, { expiresIn: '1h' });
         res.status(201).json({
             success: true,
-            data: { id: userId, email: value.email, role: value.role, token }
+            data: {
+                id: userId,
+                email: value.email,
+                role: value.roles[0], // Для совместимости
+                name: value.name || '',
+                roles: value.roles,
+                createdAt: now,
+                updatedAt: now,
+                token
+            }
         });
     } catch (err) {
         res.status(500).json({

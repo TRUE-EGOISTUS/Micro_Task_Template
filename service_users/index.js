@@ -91,7 +91,11 @@ app.post('/v1/users/register', async (req, res) => {
             id: userId,
             email: value.email,
             password: hashedPassword,
-            role: value.role
+            name: value.name || '', // Пустая строка по умолчанию
+            roles: value.roles, // Массив ['user'] или другой
+            role: value.roles[0] || 'user', // Для обратной совместимости
+            createdAt: now,
+            updatedAt: now
         };
 
         fakeUsersDb[userId] = newUser;

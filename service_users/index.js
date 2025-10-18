@@ -86,7 +86,7 @@ app.post('/v1/users/register', async (req, res) => {
 
         // Хеширование пароля
         const hashedPassword = await bcrypt.hash(value.password, 10);
-        const userId = currentId++;
+        const userId = uuidv4();
         const newUser = {
             id: userId,
             email: value.email,

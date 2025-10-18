@@ -168,10 +168,26 @@ app.post('/v1/users/login', async (req, res) => {
 });
 app.get('/v1/users/profile', authenticateJWT, (req, res) => {
     const user = fakeUsersDb[req.user.id];
-    logger.info({ requestId: req.requestId, userId: req.user.id }, 'Profile fetched');
+    if (!user) {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'User not found');
+        return res.status(404).json({
+            success: false,
+            error: { code: 'NOT_FOUND', message: 'User not found' }
+        });
+    }
+
+    logger.info({ requestId: req.requestId, userId: req.user.id }, 'User profile fetched');
     res.json({
         success: true,
-        data: { id: user.id, email: user.email, role: user.role }
+        data: {
+            id: user.id,
+            email: user.email,
+            role: user.roles[0], // Для совместимости
+            name: user.name,
+            roles: user.roles,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        }
     });
 });
 

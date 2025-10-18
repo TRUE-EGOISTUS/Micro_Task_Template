@@ -19,7 +19,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-    req.requestId = req.headers['x-request-id'] || Date.now().toString();
+    req.requestId = req.headers['x-request-id'] || uuidv4();
     res.setHeader('X-Request-ID', req.requestId);
     logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
     next();

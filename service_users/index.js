@@ -195,32 +195,47 @@ app.get('/v1/users/profile', authenticateJWT, (req, res) => {
 });
 
 app.put('/v1/users/profile', authenticateJWT, async (req, res) => {
-    try {
-        const { error, value } = profileSchema.validate(req.body);
-        if (error) {
-            logger.warn({ requestId: req.requestId, error: error.details }, 'Validation failed');
-            return res.status(400).json({
-                success: false,
-                error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
-            });
-        }
-
-        const user = fakeUsersDb[req.user.id];
-        if (value.email) user.email = value.email;
-        if (value.password) user.password = await bcrypt.hash(value.password, 10);
-        fakeUsersDb[req.user.id] = user;
-        logger.info({ requestId: req.requestId, userId: req.user.id }, 'Profile updated');
-        res.json({
-            success: true,
-            data: { id: user.id, email: user.email, role: user.role }
-        });
-    } catch (err) {
-        logger.error({ requestId: req.requestId, error: err.message }, 'Profile update error');
-        res.status(500).json({
+    const user = fakeUsersDb[req.user.id];
+    if (!user) {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'User not found');
+        return res.status(404).json({
             success: false,
-            error: { code: 'INTERNAL_ERROR', message: 'Server error' }
+            error: { code: 'NOT_FOUND', message: 'User not found' }
         });
     }
+
+    const { error, value } = profileSchema.validate(req.body);
+    if (error) {
+        logger.warn({ requestId: req.requestId }, 'Validation error');
+        return res.status(400).json({
+            success: false,
+            error: { code: 'VALIDATION_ERROR', message: error.details[0].message }
+        });
+    }
+
+    if (value.email) user.email = value.email;
+    if (value.password) user.password = await bcrypt.hash(value.password, 10);
+    if (value.name !== undefined) user.name = value.name;
+    if (value.roles) {
+        user.roles = value.roles;
+        user.role = value.roles[0] || 'user'; // Для совместимости
+    }
+    user.updatedAt = new Date().toISOString();
+
+    fakeUsersDb[req.user.id] = user;
+    logger.info({ requestId: req.requestId, userId: req.user.id }, 'User profile updated');
+    res.json({
+        success: true,
+        data: {
+            id: user.id,
+            email: user.email,
+            role: user.roles[0],
+            name: user.name,
+            roles: user.roles,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        }
+    });
 });
 app.get('/v1/users', authenticateJWT, (req, res) => {
     if (req.user.role !== 'admin') {

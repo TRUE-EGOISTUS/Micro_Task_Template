@@ -147,7 +147,16 @@ app.post('/v1/users/login', async (req, res) => {
         logger.info({ requestId: req.requestId, userId: user.id }, 'User logged in');
         res.json({
             success: true,
-            data: { id: user.id, email: user.email, role: user.role, token }
+            data: {
+                id: user.id,
+                email: user.email,
+                role: user.roles[0], // Для совместимости
+                name: user.name,
+                roles: user.roles,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt,
+                token
+            }
         });
     } catch (err) {
         logger.error({ requestId: req.requestId, error: err.message }, 'Login error');

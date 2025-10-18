@@ -5,10 +5,12 @@ const jwt = require('jsonwebtoken');
 const pino = require('pino');
 const EventEmitter = require('events');
 const uuid = require('uuid');
+const axios = require('axios');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 const JWT_SECRET = process.env.JWT_SECRET || 'my-secret-key';
+const USERS_SERVICE_URL = process.env.USERS_SERVICE_URL || 'http://service_users:8002';
 const logger = pino({ level: process.env.NODE_ENV === 'production' ? 'info' : 'debug' });
 const eventEmitter = new EventEmitter(); // Для событий
 
@@ -60,7 +62,7 @@ const orderSchema = Joi.object({
 });
 // Имитация базы данных в памяти (LocalStorage)
 let fakeOrdersDb = {};
-let currentId = 1;
+
 
 // Routes
 

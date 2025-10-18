@@ -279,8 +279,8 @@ app.get('/v1/users', authenticateJWT, (req, res) => {
 });
 
 app.get('/v1/users/:userId', authenticateJWT, (req, res) => {
-    const userId = parseInt(req.params.userId);
-    if (req.user.id !== userId && req.user.role !== 'admin') {
+    const userId = req.params.userId; // ID уже строка (UUID)
+    if (req.user.id !== userId && !req.user.roles.includes('admin')) {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized access to user');
         return res.status(403).json({
             success: false,
@@ -300,9 +300,18 @@ app.get('/v1/users/:userId', authenticateJWT, (req, res) => {
     logger.info({ requestId: req.requestId, userId }, 'User fetched');
     res.json({
         success: true,
-        data: { id: user.id, email: user.email, role: user.role }
+        data: {
+            id: user.id,
+            email: user.email,
+            role: user.roles[0], // Для совместимости
+            name: user.name,
+            roles: user.roles,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        }
     });
 });
+
 
 app.put('/v1/users/:userId', authenticateJWT, async (req, res) => {
     const userId = req.params.userId;

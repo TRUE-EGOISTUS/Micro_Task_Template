@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   api_gateway:
     build: api_gateway

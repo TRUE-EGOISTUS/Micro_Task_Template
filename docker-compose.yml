@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   api_gateway:
     build: api_gateway
@@ -25,6 +26,7 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=8004
       - JWT_SECRET=${JWT_SECRET:-my-secret-key}
+      - USERS_SERVICE_URL=http://service_users:8002 
     networks:
       - app-network
 

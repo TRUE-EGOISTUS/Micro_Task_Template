@@ -135,7 +135,7 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
         });
     }
 
-    if (value.userId !== req.user.id && req.user.role !== 'admin') {
+    if (value.userId !== req.user.id && !req.user.roles.includes('admin')) {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order creation');
         return res.status(403).json({
             success: false,
@@ -143,7 +143,28 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
         });
     }
 
-    const orderId = uuid.v4();
+    // Проверка существования пользователя
+    try {
+        const userResponse = await axios.get(`${USERS_SERVICE_URL}/v1/users/${value.userId}`, {
+            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
+        });
+        if (!userResponse.data.success) {
+            logger.warn({ requestId: req.requestId, userId: value.userId }, 'User not found');
+            return res.status(400).json({
+                success: false,
+                error: { code: 'USER_NOT_FOUND', message: 'User does not exist' }
+            });
+        }
+    } catch (error) {
+        logger.error({ requestId: req.requestId, error: error.message }, 'Error checking user existence');
+        return res.status(400).json({
+            success: false,
+            error: { code: 'USER_NOT_FOUND', message: 'User does not exist or service unavailable' }
+        });
+    }
+
+    const orderId = uuidv4();
+    const now = new Date().toISOString();
     fakeOrdersDb[orderId] = {
         id: orderId,
         userId: value.userId,
@@ -151,8 +172,8 @@ app.post('/v1/orders', authenticateJWT, async (req, res) => {
         positions: value.positions,
         total: value.total,
         status: value.status,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        createdAt: now,
+        updatedAt: now
     };
 
     eventEmitter.emit('orderCreated', { orderId, userId: value.userId });

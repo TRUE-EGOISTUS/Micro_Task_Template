@@ -4,7 +4,7 @@ const Joi = require('joi');
 const jwt = require('jsonwebtoken');
 const pino = require('pino');
 const EventEmitter = require('events');
-const uuid = require('uuid');
+const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
 const app = express();

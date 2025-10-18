@@ -4,6 +4,7 @@ const Joi = require('joi');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pino = require('pino');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -15,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use((req, res, next) => {
-    req.requestId = Date.now().toString();
+    req.requestId = req.headers['x-request-id'] || uuidv4();
     res.setHeader('X-Request-ID', req.requestId);
     logger.info({ requestId: req.requestId, method: req.method, url: req.url }, 'Request received');
     next();

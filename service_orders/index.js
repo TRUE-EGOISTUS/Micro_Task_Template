@@ -264,7 +264,7 @@ app.delete('/v1/orders/:orderId', authenticateJWT, (req, res) => {
         });
     }
 
-    if (order.userId !== req.user.id && req.user.role !== 'admin') {
+    if (order.userId !== req.user.id && !req.user.roles.includes('admin')) {
         logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized order deletion');
         return res.status(403).json({
             success: false,

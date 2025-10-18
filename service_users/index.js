@@ -238,44 +238,42 @@ app.put('/v1/users/profile', authenticateJWT, async (req, res) => {
     });
 });
 app.get('/v1/users', authenticateJWT, (req, res) => {
-    if (req.user.role !== 'admin') {
-        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Unauthorized access to users list');
+    if (!req.user.roles.includes('admin')) {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Admin access required');
         return res.status(403).json({
             success: false,
             error: { code: 'FORBIDDEN', message: 'Admin access required' }
         });
     }
 
-    const page = parseInt(req.query.page) || 1; // Номер страницы, по умолчанию 1
-    const limit = parseInt(req.query.limit) || 10; // Кол-во на странице, по умолчанию 10
-    const role = req.query.role; // Фильтр по роли
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const roleFilter = req.query.role; // Фильтр по роли
 
-    let users = Object.values(fakeUsersDb).map(u => ({
-        id: u.id,
-        email: u.email,
-        role: u.role,
-        name: u.name,
-        roles: u.roles,
-        createdAt: u.createdAt,
-        updatedAt: u.updatedAt
-    }));
-
-    if (role) {
-        users = users.filter(u => u.roles.includes(role)); // Фильтр по роли
+    let users = Object.values(fakeUsersDb);
+    if (roleFilter) {
+        users = users.filter(user => user.roles.includes(roleFilter));
     }
 
-    users.sort((a, b) => a.id.localeCompare(b.id)); // Сортировка по ID
-    const start = (page - 1) * limit;
-    const paginatedUsers = users.slice(start, start + limit);
+    const total = users.length;
+    users = users.slice((page - 1) * limit, page * limit);
 
     logger.info({ requestId: req.requestId }, 'Users list fetched');
     res.json({
         success: true,
         data: {
-            users: paginatedUsers,
+            users: users.map(user => ({
+                id: user.id,
+                email: user.email,
+                role: user.roles[0], // Для совместимости
+                name: user.name,
+                roles: user.roles,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
+            })),
             page,
             limit,
-            total: users.length
+            total
         }
     });
 });

@@ -100,7 +100,7 @@ app.get('/v1/orders', authenticateJWT, (req, res) => {
     const order = req.query.order || 'asc';
 
     let orders = Object.values(fakeOrdersDb);
-    if (req.user.role !== 'admin') {
+    if (!req.user.roles.includes('admin')) {
         orders = orders.filter(o => o.userId === req.user.id);
     }
 

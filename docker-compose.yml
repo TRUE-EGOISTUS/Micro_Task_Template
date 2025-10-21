@@ -16,7 +16,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=8002
-      - JWT_SECRET=my_secret_key
+      - JWT_SECRET=my-secret-key
     networks:
       - app-network
 

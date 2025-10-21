@@ -463,5 +463,5 @@ app.listen(PORT, () => {
     usersCircuit.on('halfOpen', () => logger.info('Users circuit breaker half-open'));
     ordersCircuit.on('open', () => logger.info('Orders circuit breaker opened'));
     ordersCircuit.on('close', () => logger.info('Orders circuit breaker closed'));
-    ordersCircuit.on('halfOpen', () => logger.info('Orders circuit breaker half-open'));
+    ordersCircuit.on('halfOpen', () => logger.info('Orders circuit breaker half-open'))
 });

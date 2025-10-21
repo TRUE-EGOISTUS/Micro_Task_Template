@@ -406,5 +406,5 @@ app.get('/v1/users/status', (req, res) => {
 });
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Users service running on port ${PORT}`);
+    console.log(`Users service running on port ${PORT}`)
 });

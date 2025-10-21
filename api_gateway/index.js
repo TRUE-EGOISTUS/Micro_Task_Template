@@ -343,6 +343,52 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
         });
     }
 });
+// Gateway Aggregation: Get user details with their orders
+app.get('/v1/users/:userId/details', async (req, res) => {
+    console.log("Reached /v1/users/:userId/details with userId:", req.params.userId, "and user:", req.user);
+    const userId = req.params.userId;
+    logger.info({ requestId: req.requestId, userId }, 'Gateway: Fetching user details');
+
+    if (req.user.id !== userId && req.user.role !== 'admin') {
+        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Gateway: Unauthorized user details access');
+        return res.status(403).json({
+            success: false,
+            error: { code: 'FORBIDDEN', message: 'Access denied' }
+        });
+    }
+
+    try {
+        const userResponse = await axios.get(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
+            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
+        });
+
+        const ordersResponse = await axios.get(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
+            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
+        });
+
+        logger.info({ requestId: req.requestId, userId }, 'Gateway: User and orders fetched successfully');
+        res.json({
+            success: true,
+            data: {
+                user: userResponse.data.data,
+                orders: ordersResponse.data.data.orders
+            }
+        });
+    } catch (error) {
+        logger.error({
+            requestId: req.requestId,
+            userId,
+            error: error.message
+        }, 'Gateway: Error fetching user details');
+        res.status(error.response?.status || 500).json({
+            success: false,
+            error: {
+                code: error.response?.data?.error?.code || 'INTERNAL_ERROR',
+                message: error.response?.data?.error?.message || 'Internal server error'
+            }
+        });
+    }
+});
 app.use('/v1/users', createProxyMiddleware({
     target: USERS_SERVICE_URL,
     changeOrigin: true,
@@ -388,51 +434,6 @@ app.use('/v1/orders', createProxyMiddleware({
         }, 'Gateway: Response from orders service');
     }
 }));
-// Gateway Aggregation: Get user details with their orders
-app.get('/v1/users/:userId/details', async (req, res) => {
-    const userId = req.params.userId;
-    logger.info({ requestId: req.requestId, userId }, 'Gateway: Fetching user details');
-
-    if (req.user.id !== userId && req.user.role !== 'admin') {
-        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Gateway: Unauthorized user details access');
-        return res.status(403).json({
-            success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied' }
-        });
-    }
-
-    try {
-        const userResponse = await axios.get(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
-            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
-        });
-
-        const ordersResponse = await axios.get(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
-            headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
-        });
-
-        logger.info({ requestId: req.requestId, userId }, 'Gateway: User and orders fetched successfully');
-        res.json({
-            success: true,
-            data: {
-                user: userResponse.data.data,
-                orders: ordersResponse.data.data.orders
-            }
-        });
-    } catch (error) {
-        logger.error({
-            requestId: req.requestId,
-            userId,
-            error: error.message
-        }, 'Gateway: Error fetching user details');
-        res.status(error.response?.status || 500).json({
-            success: false,
-            error: {
-                code: error.response?.data?.error?.code || 'INTERNAL_ERROR',
-                message: error.response?.data?.error?.message || 'Internal server error'
-            }
-        });
-    }
-});
 
 // Health check endpoint that shows circuit breaker status
 app.get('/v1/health', (req, res) => {

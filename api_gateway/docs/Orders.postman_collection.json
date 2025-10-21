@@ -1,0 +1,530 @@
+{
+	"info": {
+		"_postman_id": "65304994-0f2a-48a1-b9bf-3e728511a611",
+		"name": "Orders",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48995158"
+	},
+	"item": [
+		{
+			"name": "Создание заказа",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", () => {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Response has full order data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Create Order Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\").that.is.a(\"string\").that.matches(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/); // UUID\r",
+							"    pm.expect(response.data).to.have.property(\"userId\", pm.environment.get(\"USER_ID\"));\r",
+							"    pm.expect(response.data).to.have.property(\"description\", \"Test order\");\r",
+							"    pm.expect(response.data).to.have.property(\"positions\").that.is.an(\"array\").with.length(1);\r",
+							"    pm.expect(response.data.positions[0]).to.have.property(\"product\", \"Building materials\");\r",
+							"    pm.expect(response.data.positions[0]).to.have.property(\"quantity\", 2);\r",
+							"    pm.expect(response.data).to.have.property(\"total\", 100.50);\r",
+							"    pm.expect(response.data).to.have.property(\"status\", \"created\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\").that.matches(/\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z/); // ISO date\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\").that.matches(/\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z/);\r",
+							"    // Сохраняем ID заказа для следующих тестов\r",
+							"    pm.environment.set(\"ORDER_ID\", response.data.id);\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Добавляем токен пользователя для создания заказа\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Create Order:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"{{USER_ID}}\",\r\n  \"description\": \"Test order\",\r\n  \"positions\": [\r\n    {\r\n      \"product\": \"Building materials\",\r\n      \"quantity\": 2\r\n    }\r\n  ],\r\n  \"total\": 100.50\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Создание заказа (Невалидный пользователь)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен текущего пользователя, но указываем несуществующий userId\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Invalid User:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});\r",
+							"pm.test(\"Response has error USER_NOT_FOUND\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Create Order Invalid User Response:\", response);\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"USER_NOT_FOUND\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"User does not exist\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"00000000-0000-0000-0000-000000000000\",\r\n  \"description\": \"Invalid order for non-existent user\",\r\n  \"positions\": [\r\n    {\r\n      \"product\": \"Building materials\",\r\n      \"quantity\": 1\r\n    }\r\n  ],\r\n  \"total\": 50.00\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Получение заказа",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен текущего пользователя\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Get Order:\", pm.request.headers.get('Authorization'));\r",
+							"console.log(\"ORDER_ID:\", pm.environment.get(\"ORDER_ID\"));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has full order data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Get Order Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\", pm.environment.get(\"ORDER_ID\"));\r",
+							"    pm.expect(response.data).to.have.property(\"userId\", pm.environment.get(\"USER_ID\"));\r",
+							"    pm.expect(response.data).to.have.property(\"description\", \"Test order\");\r",
+							"    pm.expect(response.data).to.have.property(\"positions\").that.is.an(\"array\").with.length(1);\r",
+							"    pm.expect(response.data.positions[0]).to.have.property(\"product\", \"Building materials\");\r",
+							"    pm.expect(response.data.positions[0]).to.have.property(\"quantity\", 2);\r",
+							"    pm.expect(response.data).to.have.property(\"total\", 100.50);\r",
+							"    pm.expect(response.data).to.have.property(\"status\", \"created\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders/{{ORDER_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders",
+						"{{ORDER_ID}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Список своих заказов",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен текущего пользователя\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Get Orders:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has orders list with pagination\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Get Orders Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"orders\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data).to.have.property(\"page\", 1);\r",
+							"    pm.expect(response.data).to.have.property(\"limit\", 10);\r",
+							"    pm.expect(response.data).to.have.property(\"total\").that.is.a(\"number\");\r",
+							"    // Проверяем, что заказы принадлежат текущему пользователю\r",
+							"    if (response.data.orders.length > 0) {\r",
+							"        response.data.orders.forEach(order => {\r",
+							"            pm.expect(order.userId).to.equal(pm.environment.get(\"USER_ID\"));\r",
+							"            pm.expect(order).to.have.property(\"id\");\r",
+							"            pm.expect(order).to.have.property(\"description\");\r",
+							"            pm.expect(order).to.have.property(\"positions\").that.is.an(\"array\");\r",
+							"            pm.expect(order).to.have.property(\"total\");\r",
+							"            pm.expect(order).to.have.property(\"status\");\r",
+							"            pm.expect(order).to.have.property(\"createdAt\");\r",
+							"            pm.expect(order).to.have.property(\"updatedAt\");\r",
+							"        });\r",
+							"    }\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders?page=1&limit=10",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Регистрация второго пользователя",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Регистрация открытая, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", () => {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Response has other user data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Register Other User Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"role\", \"user\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.includes(\"user\");\r",
+							"    // Сохраняем токен второго пользователя для теста прав\r",
+							"    pm.environment.set(\"OTHER_USER_TOKEN\", response.data.token);\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"other@example.com\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Other User\",\r\n  \"roles\": [\"user\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/register",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Попытка обновить чужой заказ",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен второго пользователя (OTHER_USER_TOKEN) для попытки обновления чужого заказа\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('OTHER_USER_TOKEN') ? `Bearer ${pm.environment.get('OTHER_USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Update Order (Forbidden):\", pm.request.headers.get('Authorization'));\r",
+							"console.log(\"Attempting to update ORDER_ID:\", pm.environment.get(\"ORDER_ID\"), \"with OTHER_USER_TOKEN\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", () => {\r",
+							"    pm.response.to.have.status(403);\r",
+							"});\r",
+							"pm.test(\"Response has error FORBIDDEN\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Update Order Forbidden Response:\", response);\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"FORBIDDEN\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"Access denied\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"userId\": \"{{USER_ID}}\",\r\n  \"description\": \"Updated order by other user\",\r\n  \"positions\": [\r\n    {\r\n      \"product\": \"Updated materials\",\r\n      \"quantity\": 3\r\n    }\r\n  ],\r\n  \"total\": 150.75,\r\n  \"status\": \"in_progress\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders/{{ORDER_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders",
+						"{{ORDER_ID}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Отмена заказа",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен текущего пользователя для удаления своего заказа\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Delete Order:\", pm.request.headers.get('Authorization'));\r",
+							"console.log(\"Deleting ORDER_ID:\", pm.environment.get(\"ORDER_ID\"));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response confirms deletion\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Delete Order Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"message\", \"Order deleted\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/orders/{{ORDER_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"orders",
+						"{{ORDER_ID}}"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

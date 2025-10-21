@@ -1,0 +1,273 @@
+{
+	"info": {
+		"_postman_id": "56883e43-7ab4-454e-af16-d15da398ac6a",
+		"name": "Gateway",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48995158"
+	},
+	"item": [
+		{
+			"name": "Агрегация данных пользователя и заказов",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Get User Details:\", pm.request.headers.get('Authorization'));\r",
+							"console.log(\"USER_ID:\", pm.environment.get(\"USER_ID\"));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has aggregated user and orders data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Get User Details Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"user\").that.is.an(\"object\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"id\", pm.environment.get(\"USER_ID\"));\r",
+							"    pm.expect(response.data.user).to.have.property(\"email\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"role\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"roles\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"name\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data.user).to.have.property(\"updatedAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"orders\").that.is.an(\"array\");\r",
+							"    if (response.data.orders.length > 0) {\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"id\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"userId\", pm.environment.get(\"USER_ID\"));\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"description\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"positions\").that.is.an(\"array\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"total\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"status\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"createdAt\");\r",
+							"        pm.expect(response.data.orders[0]).to.have.property(\"updatedAt\");\r",
+							"    }\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/{{USER_ID}}/details",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"{{USER_ID}}",
+						"details"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Проверка Rate Limit",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const sendMultipleRequests = async () => {\r",
+							"    for (let i = 0; i < 101; i++) {\r",
+							"        await pm.sendRequest({\r",
+							"            url: pm.environment.get(\"BASE_URL\") + \"/v1/status\",\r",
+							"            method: \"GET\"\r",
+							"        });\r",
+							"    }\r",
+							"};\r",
+							"sendMultipleRequests();"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 429\", () => {\r",
+							"    pm.response.to.have.status(429);\r",
+							"});\r",
+							"pm.test(\"Response has error RATE_LIMIT_EXCEEDED\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Rate Limit Check Response:\", response);\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"RATE_LIMIT_EXCEEDED\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"Too many requests\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/status",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"status"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Проверка Health",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has health status\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Health Check Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"status\").that.includes(\"API Gateway is running\");\r",
+							"    pm.expect(response.data).to.have.property(\"circuits\").that.is.an(\"object\");\r",
+							"    pm.expect(response.data.circuits).to.have.property(\"users\").that.is.an(\"object\");\r",
+							"    pm.expect(response.data.circuits.users).to.have.property(\"status\").that.is.oneOf([\"closed\", \"open\", \"half-open\"]);\r",
+							"    pm.expect(response.data.circuits.users).to.have.property(\"stats\").that.is.an(\"object\");\r",
+							"    pm.expect(response.data.circuits).to.have.property(\"orders\").that.is.an(\"object\");\r",
+							"    pm.expect(response.data.circuits.orders).to.have.property(\"status\").that.is.oneOf([\"closed\", \"open\", \"half-open\"]);\r",
+							"    pm.expect(response.data.circuits.orders).to.have.property(\"stats\").that.is.an(\"object\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.request.headers.remove(\"Authorization\");\r",
+							"console.log(\"No Authorization header for Health Check\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/health",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"health"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Попытка получить данные другого пользователя",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Используем токен другого пользователя\r",
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('OTHER_USER_TOKEN') ? `Bearer ${pm.environment.get('OTHER_USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Get User Details Forbidden:\", pm.request.headers.get('Authorization'));\r",
+							"console.log(\"USER_ID:\", pm.environment.get(\"USER_ID\"));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", () => {\r",
+							"    pm.response.to.have.status(403);\r",
+							"});\r",
+							"pm.test(\"Response has error FORBIDDEN\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Get User Details Forbidden Response:\", response);\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"FORBIDDEN\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"Access denied\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/{{USER_ID}}/details",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"{{USER_ID}}",
+						"details"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

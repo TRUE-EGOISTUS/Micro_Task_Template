@@ -1,0 +1,641 @@
+{
+	"info": {
+		"_postman_id": "d6b8df87-d10e-42b8-947c-bac138e99c29",
+		"name": "Users",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "48995158"
+	},
+	"item": [
+		{
+			"name": "Регистрация",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", () => {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Response has success and full user data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data).to.have.property(\"email\").that.includes(\"test\");\r",
+							"    pm.expect(response.data).to.have.property(\"role\", \"user\");\r",
+							"    pm.expect(response.data).to.have.property(\"name\", \"Test User\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.is.an(\"array\").that.includes(\"user\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"token\");\r",
+							"    pm.environment.set(\"USER_TOKEN\", response.data.token);\r",
+							"    pm.environment.set(\"USER_ID\", response.data.id);\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Регистрация открытая, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"test@example.com\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Test User\",\r\n  \"roles\": [\"user\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/register",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Логин",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Вход открытый, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has token and full user\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data).to.have.property(\"email\", \"test@example.com\");\r",
+							"    pm.expect(response.data).to.have.property(\"role\", \"user\");\r",
+							"    pm.expect(response.data).to.have.property(\"name\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"token\");\r",
+							"    pm.environment.set(\"USER_TOKEN\", response.data.token);\r",
+							"    pm.environment.set(\"USER_ID\", response.data.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"test@example.com\",\r\n  \"password\": \"password123\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/login",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Логин Второго пользователя",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Вход открытый, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has token and full user\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\").that.is.a(\"string\");\r",
+							"    pm.expect(response.data).to.have.property(\"email\", \"test@example.com\");\r",
+							"    pm.expect(response.data).to.have.property(\"role\", \"user\");\r",
+							"    pm.expect(response.data).to.have.property(\"name\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"token\");\r",
+							"    pm.environment.set(\"USER_TOKEN\", response.data.token);\r",
+							"    pm.environment.set(\"USER_ID\", response.data.id);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"email\": \"other@example.com\",\r\n  \"password\": \"password123\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/login",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"login"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Профиль без токена",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", () => {\r",
+							"    pm.response.to.have.status(401);\r",
+							"});\r",
+							"pm.test(\"Response has error UNAUTHORIZED\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"UNAUTHORIZED\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"Authorization\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/profile",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Регистрация (Дублирование email)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Регистрация открытая, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", () => {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});\r",
+							"pm.test(\"Response has error EMAIL_EXISTS\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.false;\r",
+							"    pm.expect(response.error).to.have.property(\"code\", \"EMAIL_EXISTS\");\r",
+							"    pm.expect(response.error).to.have.property(\"message\").that.includes(\"Email\");\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"test@example.com\",\r\n  \"password\": \"password123\",\r\n  \"name\": \"Test User\",\r\n  \"roles\": [\"user\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/register",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Регистрация админа",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Регистрация открытая, токен не нужен\r",
+							"pm.environment.set(\"USER_TOKEN\", \"\");"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", () => {\r",
+							"    pm.response.to.have.status(201);\r",
+							"});\r",
+							"pm.test(\"Response has admin user data\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"role\", \"admin\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.includes(\"admin\");\r",
+							"    pm.environment.set(\"ADMIN_TOKEN\", response.data.token);\r",
+							"    console.log(\"ADMIN_TOKEN:\", response.data.token); // Для отладки\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"email\": \"admin@example.com\",\r\n  \"password\": \"admin123\",\r\n  \"name\": \"Admin\",\r\n  \"roles\": [\"admin\"]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/register",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Список пользователей (админ)",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('ADMIN_TOKEN') ? `Bearer ${pm.environment.get('ADMIN_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has users list with pagination\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Response:\", response);\r",
+							"    console.log(\"Status code:\", pm.response.code);\r",
+							"    console.log(\"Headers:\", pm.response.headers.all());\r",
+							"    pm.expect(response.success, `Expected success: true, but got ${response.success}. Error: ${JSON.stringify(response.error)}`).to.be.true;\r",
+							"    pm.expect(response.data, \"Expected data object to exist\").to.exist;\r",
+							"    pm.expect(response.data).to.have.property(\"users\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data).to.have.property(\"page\", 1);\r",
+							"    pm.expect(response.data).to.have.property(\"limit\", 10);\r",
+							"    pm.expect(response.data).to.have.property(\"total\").that.is.a(\"number\");\r",
+							"    if (response.data.users.length > 0) {\r",
+							"        pm.expect(response.data.users[0]).to.have.property(\"roles\").that.includes(\"user\");\r",
+							"    }\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users?page=1&limit=10&role=user",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users"
+					],
+					"query": [
+						{
+							"key": "page",
+							"value": "1"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						},
+						{
+							"key": "role",
+							"value": "user"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Чтение профиля",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Get Profile:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has full user profile\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Get Profile Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\", pm.environment.get(\"USER_ID\"));\r",
+							"    pm.expect(response.data).to.have.property(\"email\");\r",
+							"    pm.expect(response.data).to.have.property(\"role\");\r",
+							"    pm.expect(response.data).to.have.property(\"roles\").that.is.an(\"array\");\r",
+							"    pm.expect(response.data).to.have.property(\"name\");\r",
+							"    pm.expect(response.data).to.have.property(\"createdAt\");\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\");\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/profile",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Обновление профиля",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"pm.request.headers.add({\r",
+							"    key: 'Authorization',\r",
+							"    value: pm.environment.get('USER_TOKEN') ? `Bearer ${pm.environment.get('USER_TOKEN')}` : ''\r",
+							"});\r",
+							"console.log(\"Authorization Header for Update Profile:\", pm.request.headers.get('Authorization'));"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", () => {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});\r",
+							"pm.test(\"Response has updated user profile\", () => {\r",
+							"    const response = pm.response.json();\r",
+							"    console.log(\"Update Profile Response:\", response);\r",
+							"    pm.expect(response.success).to.be.true;\r",
+							"    pm.expect(response.data).to.have.property(\"id\", pm.environment.get(\"USER_ID\"));\r",
+							"    pm.expect(response.data).to.have.property(\"name\", \"Updated Test User\"); // Проверяем обновление\r",
+							"    pm.expect(response.data).to.have.property(\"updatedAt\").that.is.not.equal(response.data.createdAt); // Проверяем обновление даты\r",
+							"});\r",
+							"pm.test(\"Response has X-Request-ID\", () => {\r",
+							"    pm.expect(pm.response.headers.get(\"X-Request-ID\")).to.exist;\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"name\": \"Updated Test User\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/users/profile",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"users",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

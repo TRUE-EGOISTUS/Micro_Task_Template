@@ -41,7 +41,7 @@ app.use((req, res, next) => {
 });
 
 const authenticateJWT = (req, res, next) => {
-    if (req.path === '/v1/users/register' || req.path === '/v1/users/login') {
+    if (req.path === '/v1/users/register' || req.path === '/v1/users/login' || req.path == 'v1/health') {
         logger.info({ requestId: req.requestId, path: req.path }, 'Gateway: Skipping JWT for open endpoint');
         return next();
     }

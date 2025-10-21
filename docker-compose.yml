@@ -7,7 +7,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=${API_GATEWAY_PORT:-8000}
-      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
+      - JWT_SECRET=my-secret-key
     networks:
       - app-network
 
@@ -16,7 +16,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=8002
-      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
+      - JWT_SECRET=my_secret_key
     networks:
       - app-network
 
@@ -25,7 +25,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=8004
-      - JWT_SECRET=${JWT_SECRET:-my-secret-key}
+      - JWT_SECRET=my-secret-key
       - USERS_SERVICE_URL=http://service_users:8002 
     networks:
       - app-network

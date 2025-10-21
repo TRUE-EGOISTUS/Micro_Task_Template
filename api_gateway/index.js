@@ -19,8 +19,7 @@ const limiter = rateLimit({
     max: 100, // Максимум 100 запросов
     message: {
         success: false,
-        error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests' }
-    }
+        error: { code: 'RATE_LIMIT_EXCEEDED', message: 'Too many requests - please try again later' }    }
 });
 
 // Middleware
@@ -36,22 +35,22 @@ app.use((req, res, next) => {
         method: req.method,
         url: req.url,
         path: req.path
-    }, 'Gateway: Request received');
+    }, `Gateway: Request received for ${req.method} ${req.path}`);
     next();
 });
 
 const authenticateJWT = (req, res, next) => {
     if (req.path === '/v1/users/register' || req.path === '/v1/users/login' || req.path == '/v1/health') {
-        logger.info({ requestId: req.requestId, path: req.path }, 'Gateway: Skipping JWT for open endpoint');
+        logger.info({ requestId: req.requestId, path: req.path }, `Gateway: Skipping JWT for open endpoint ${req.method} ${req.path}`);
         return next();
     }
 
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        logger.warn({ requestId: req.requestId, path: req.path }, 'Gateway: Missing or invalid Authorization header');
+        logger.warn({ requestId: req.requestId, path: req.path }, `Gateway: Missing or invalid Authorization header for ${req.method} ${req.path}`); 
         return res.status(401).json({
             success: false,
-            error: { code: 'UNAUTHORIZED', message: 'Authorization header missing or invalid' }
+            error: { code: 'UNAUTHORIZED', message: 'Authorization header missing or invalid for ' + req.method + ' ' + req.path }
         });
     }
 
@@ -59,18 +58,17 @@ const authenticateJWT = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
-        logger.info({ requestId: req.requestId, userId: decoded.id, path: req.path }, 'Gateway: JWT verified');
+        logger.info({ requestId: req.requestId, userId: decoded.id, path: req.path }, `Gateway: JWT verified for ${req.method} ${req.path}, userId: ${decoded.id}`);
         next();
     } catch (err) {
-        logger.error({ requestId: req.requestId, error: err.message, path: req.path }, 'Gateway: Invalid token');
+        logger.error({ requestId: req.requestId, error: err.message, path: req.path }, `Gateway: Invalid token for ${req.method} ${req.path}`);
         return res.status(403).json({
             success: false,
-            error: { code: 'INVALID_TOKEN', message: 'Invalid or expired token' }
+            error: { code: 'INVALID_TOKEN', message: `Invalid or expired token for ${req.method} ${req.path}` }
         });
     }
 };
 
-app.use(authenticateJWT);
 // Circuit Breaker configuration
 const circuitOptions = {
     timeout: 3000, // Timeout for requests (3 seconds)
@@ -85,11 +83,10 @@ const usersCircuit = new CircuitBreaker(async (url, options = {}) => {
             url, ...options,
             validateStatus: status => (status >= 200 && status < 300) || status === 404
         });
+        logger.info({ requestId: options.headers['X-Request-ID'], url }, `Gateway: Successful response from Users service for ${options.method || 'GET'} ${url}`);
         return response.data;
     } catch (error) {
-        if (error.response && error.response.status === 404) {
-            return error.response.data;
-        }
+        logger.error({ requestId: options.headers['X-Request-ID'], error: error.message, url }, `Gateway: Error response from Users service for ${options.method || 'GET'} ${url}`);
         throw error;
     }
 }, circuitOptions);
@@ -100,11 +97,10 @@ const ordersCircuit = new CircuitBreaker(async (url, options = {}) => {
             url, ...options,
             validateStatus: status => (status >= 200 && status < 300) || status === 404
         });
+        logger.info({ requestId: options.headers['X-Request-ID'], url }, `Gateway: Successful response from Orders service for ${options.method || 'GET'} ${url}`);
         return response.data;
     } catch (error) {
-        if (error.response && error.response.status === 404) {
-            return error.response.data;
-        }
+        logger.error({ requestId: options.headers['X-Request-ID'], error: error.message, url }, `Gateway: Error response from Orders service for ${options.method || 'GET'} ${url}`);
         throw error;
     }
 }, circuitOptions);
@@ -112,11 +108,11 @@ const ordersCircuit = new CircuitBreaker(async (url, options = {}) => {
 // Fallback functions
 usersCircuit.fallback(() => ({
     success: false,
-    error: { code: 'SERVICE_UNAVAILABLE', message: 'Users service temporarily unavailable' }
+    error: { code: 'SERVICE_UNAVAILABLE', message: 'Users service temporarily unavailable - try again later' }
 }));
 ordersCircuit.fallback(() => ({
     success: false,
-    error: { code: 'SERVICE_UNAVAILABLE', message: 'Orders service temporarily unavailable' }
+    error: { code: 'SERVICE_UNAVAILABLE', message: 'Orders service temporarily unavailable - try again later' }
 }));
 
 // Routes with Circuit Breaker
@@ -344,29 +340,24 @@ app.put('/v1/orders/:orderId', authenticateJWT, async (req, res) => {
     }
 });
 // Gateway Aggregation: Get user details with their orders
-app.get('/v1/users/:userId/details', async (req, res) => {
-    console.log("Reached /v1/users/:userId/details with userId:", req.params.userId, "and user:", req.user);
+app.get('/v1/users/:userId/details', authenticateJWT, async (req, res) => {
     const userId = req.params.userId;
-    logger.info({ requestId: req.requestId, userId }, 'Gateway: Fetching user details');
-
+    logger.info({ requestId: req.requestId, userId, path: req.path }, `Gateway: Fetching user details for ${req.method} ${req.path}`);
     if (req.user.id !== userId && req.user.role !== 'admin') {
-        logger.warn({ requestId: req.requestId, userId: req.user.id }, 'Gateway: Unauthorized user details access');
+        logger.warn({ requestId: req.requestId, userId: req.user.id, path: req.path }, `Gateway: Unauthorized user details access for ${req.method} ${req.path}`);
         return res.status(403).json({
             success: false,
-            error: { code: 'FORBIDDEN', message: 'Access denied' }
+            error: { code: 'FORBIDDEN', message: `Access denied for ${req.method} ${req.path}` }
         });
     }
-
     try {
         const userResponse = await axios.get(`${USERS_SERVICE_URL}/v1/users/${userId}`, {
             headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
         });
-
         const ordersResponse = await axios.get(`${ORDERS_SERVICE_URL}/v1/orders?userId=${userId}`, {
             headers: { 'X-Request-ID': req.requestId, Authorization: req.headers.authorization }
         });
-
-        logger.info({ requestId: req.requestId, userId }, 'Gateway: User and orders fetched successfully');
+        logger.info({ requestId: req.requestId, userId, path: req.path }, `Gateway: User and orders fetched successfully for ${req.method} ${req.path}`);
         res.json({
             success: true,
             data: {
@@ -378,13 +369,14 @@ app.get('/v1/users/:userId/details', async (req, res) => {
         logger.error({
             requestId: req.requestId,
             userId,
-            error: error.message
-        }, 'Gateway: Error fetching user details');
+            error: error.message,
+            path: req.path
+        }, `Gateway: Error fetching user details for ${req.method} ${req.path}`);
         res.status(error.response?.status || 500).json({
             success: false,
             error: {
                 code: error.response?.data?.error?.code || 'INTERNAL_ERROR',
-                message: error.response?.data?.error?.message || 'Internal server error'
+                message: error.response?.data?.error?.message || `Internal server error for ${req.method} ${req.path}`
             }
         });
     }
@@ -392,52 +384,55 @@ app.get('/v1/users/:userId/details', async (req, res) => {
 app.use('/v1/users', createProxyMiddleware({
     target: USERS_SERVICE_URL,
     changeOrigin: true,
-    onProxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Request-ID', req.requestId);
-        if (req.headers.authorization) {
-            proxyReq.setHeader('Authorization', req.headers.authorization);
+    on: {
+        proxyReq: (proxyReq, req) => {
+            proxyReq.setHeader('X-Request-ID', req.requestId);
+            if (req.headers.authorization) {
+                proxyReq.setHeader('Authorization', req.headers.authorization);
+            }
+            logger.info({
+                requestId: req.requestId,
+                target: USERS_SERVICE_URL,
+                path: req.path
+            }, `Gateway: Proxying to Users service for ${req.method} ${req.path}`);
+        },
+        proxyRes: (proxyRes, req) => {
+            logger.info({
+                requestId: req.requestId,
+                statusCode: proxyRes.statusCode,
+                path: req.path
+            }, `Gateway: Response from Users service for ${req.method} ${req.path}`);
         }
-        logger.info({
-            requestId: req.requestId,
-            target: USERS_SERVICE_URL,
-            path: req.path
-        }, 'Gateway: Proxying to users service');
-    },
-    onProxyRes: (proxyRes, req) => {
-        logger.info({
-            requestId: req.requestId,
-            statusCode: proxyRes.statusCode,
-            path: req.path
-        }, 'Gateway: Response from users service');
     }
 }));
 
 app.use('/v1/orders', createProxyMiddleware({
     target: ORDERS_SERVICE_URL,
     changeOrigin: true,
-    onProxyReq: (proxyReq, req) => {
-        proxyReq.setHeader('X-Request-ID', req.requestId);
-        if (req.headers.authorization) {
-            proxyReq.setHeader('Authorization', req.headers.authorization);
+    on: {
+        proxyReq: (proxyReq, req) => {
+            proxyReq.setHeader('X-Request-ID', req.requestId);
+            if (req.headers.authorization) {
+                proxyReq.setHeader('Authorization', req.headers.authorization);
+            }
+            logger.info({
+                requestId: req.requestId,
+                target: ORDERS_SERVICE_URL,
+                path: req.path
+            }, `Gateway: Proxying to Orders service for ${req.method} ${req.path}`);
+        },
+        proxyRes: (proxyRes, req) => {
+            logger.info({
+                requestId: req.requestId,
+                statusCode: proxyRes.statusCode,
+                path: req.path
+            }, `Gateway: Response from Orders service for ${req.method} ${req.path}`);
         }
-        logger.info({
-            requestId: req.requestId,
-            target: ORDERS_SERVICE_URL,
-            path: req.path
-        }, 'Gateway: Proxying to orders service');
-    },
-    onProxyRes: (proxyRes, req) => {
-        logger.info({
-            requestId: req.requestId,
-            statusCode: proxyRes.statusCode,
-            path: req.path
-        }, 'Gateway: Response from orders service');
     }
 }));
 
-// Health check endpoint that shows circuit breaker status
 app.get('/v1/health', (req, res) => {
-    logger.info({ requestId: req.requestId }, 'Health check');
+    logger.info({ requestId: req.requestId, path: req.path }, `Gateway: Health check performed for ${req.method} ${req.path}`);
     res.json({
         success: true,
         data: {
@@ -451,7 +446,7 @@ app.get('/v1/health', (req, res) => {
 });
 
 app.get('/v1/status', (req, res) => {
-    logger.info({ requestId: req.requestId }, 'Status check');
+    logger.info({ requestId: req.requestId, path: req.path }, `Gateway: Status check performed for ${req.method} ${req.path}`);
     res.json({ success: true, data: { status: 'API Gateway is running' } });
 });
 
